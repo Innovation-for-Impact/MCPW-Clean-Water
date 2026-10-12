@@ -18,9 +18,13 @@ A pin placed by search or click sends its coordinates to the intake form, and th
 
 ## Technology
 
-- **ArcGIS Maps SDK for JavaScript 4.x** — map rendering, geocoding, geometry
+- **React 18** — UI framework (component-based, hooks for state and lifecycle)
+- **Vite** — build tool and dev server
+- **TypeScript** — type safety across components and ArcGIS types
+- **`@arcgis/core`** — ArcGIS Maps SDK for JavaScript 4.x (ES modules, tree-shakable)
 - **ArcGIS World Geocoding Service** — address search
 - **ArcGIS Feature Layers / Vector Tiles** — overlay layers from WS3
+- **React Context + `useReducer`** — shared state for pin, buffer, and lookup results across components
 
 ## Implementation Tasks
 
@@ -28,19 +32,24 @@ A pin placed by search or click sends its coordinates to the intake form, and th
 
 #### 1.1 Set up the app shell
 
-- [ ] Scaffold the frontend project (Vite or similar bundler) with ArcGIS Maps SDK for JavaScript 4.x
+- [ ] Scaffold the frontend project with Vite + React 18 + TypeScript
+  - `npm create vite@latest frontend -- --template react-ts`
+  - Install `@arcgis/core` and copy ArcGIS assets to the public directory
+  - Configure Vite to handle `@arcgis/core` CSS imports
 - [ ] Obtain an ArcGIS developer API key
-  - Store in `.env`; add `.env` to `.gitignore`
+  - Store in `.env` as `VITE_ARCGIS_API_KEY`; add `.env` to `.gitignore`
   - Document the required env var in the README
-- [ ] Configure a `MapView` centered on Macomb County
+- [ ] Create the `MapContext` (React Context + `useReducer`)
+  - Shared state: `pin { lat, lon, address }`, `bufferRadius`, `lookupResult`, `activeOverlays`
+  - Actions: `SET_PIN`, `SET_BUFFER`, `SET_LOOKUP_RESULT`, `TOGGLE_LAYER`
+- [ ] Build the `<MapView />` component
+  - Initialize the ArcGIS `MapView` inside a `useEffect` ref-based hook
   - Center: approximately 42.65°N, -82.93°W
   - Zoom level showing all of Macomb County with Lake St. Clair visible
   - Use a streets or topographic basemap appropriate for field use
-- [ ] Set up the project structure
-  - `/src/map/` — map initialization, view config
-  - `/src/widgets/` — search, pin, buffer, layer toggle
-  - `/src/utils/` — coordinate formatting, unit conversion
-- [ ] Verify the map loads in Chrome, Safari, and Firefox on desktop and mobile viewports
+  - Clean up the view on component unmount
+- [ ] Set up the project structure (see file structure below)
+- [ ] Verify the map loads in Chrome, Safari, and Firefox on desktop
 
 #### 1.2 Add location search
 
@@ -57,31 +66,37 @@ A pin placed by search or click sends its coordinates to the intake form, and th
 
 #### 2.1 Pin the spill
 
-- [ ] Click-to-pin: clicking the map places a `Graphic` point marker
+- [ ] Build `<SpillPin />` component
+  - Click-to-pin: listen for `MapView` click events; place a `Graphic` point marker
   - Only one pin at a time; clicking again moves it
   - Pin is draggable for fine adjustment (`SketchViewModel` or custom drag handler)
-- [ ] Coordinate display below the map
+  - On pin place/move: dispatch `SET_PIN` to `MapContext`
+- [ ] Build `<CoordinateDisplay />` component
+  - Reads `pin` from `MapContext`
   - Format: decimal degrees (e.g., 42.6123, -82.9456)
-  - Live-update as the pin moves
-- [ ] Manual coordinate entry
-  - Two input fields (lat, lon) that reposition the pin and re-center the map on submit
+  - Live-updates as the pin moves via context subscription
+- [ ] Build `<CoordinateInput />` component
+  - Two controlled input fields (lat, lon) that dispatch `SET_PIN` on submit
+  - Repositions the pin and re-centers the map
   - Validate coordinates are within Macomb County bounds; warn if outside
-- [ ] Emit pin location to intake form (WS2)
-  - Expose a callback or event (`onPinChange`) with `{ lat, lon, address }` payload
-  - WS2 subscribes and auto-fills the location fields
+- [ ] Pin state flows to intake form (WS2)
+  - WS2 components subscribe to `MapContext` and auto-fill location fields
+  - No prop drilling — all communication via shared context
 
 #### 2.2 Draw the impact buffer
 
-- [ ] Draw a circle (`Circle` geometry or `geometryEngine.geodesicBuffer`) around the pin
+- [ ] Build `<ImpactBuffer />` component
+  - Reads `pin` and `bufferRadius` from `MapContext`
+  - Draw a circle using `geometryEngine.geodesicBuffer` from `@arcgis/core/geometry/geometryEngine`
   - Radius determined by spill quantity using a radius lookup table (agreed with WS4)
   - Default radius when quantity is unknown (e.g., 100 m)
 - [ ] Render the buffer as a semi-transparent polygon overlay
   - Visually distinct from jurisdiction layers (e.g., orange with 20% fill)
-- [ ] Reactivity
-  - Redraw when the pin moves (drag, search, manual entry)
-  - Redraw when the spill size changes (listen for intake form updates from WS2)
+- [ ] Reactivity via `useEffect` watching context state
+  - Redraw when `pin` changes (drag, search, manual entry)
+  - Redraw when `bufferRadius` changes (WS2 intake form dispatches `SET_BUFFER`)
 - [ ] Pass the buffer geometry to WS5 for spatial query
-  - Include in the `onPinChange` payload or a separate `onBufferChange` event
+  - Include buffer radius in context state; WS5 API call reads from `MapContext`
 
 #### 2.3 Add overlay layers
 
@@ -90,28 +105,28 @@ A pin placed by search or click sends its coordinates to the intake form, and th
   - County drain districts
   - Clinton River subwatersheds (HUC-12)
   - Water bodies and stream flowlines (NHD)
-- [ ] Layer toggle control
-  - Add a `LayerList` widget or custom toggle panel
+- [ ] Build `<LayerToggle />` component
+  - Render a checkbox list of available overlay layers
+  - Toggle layer visibility via `MapContext` dispatch (`TOGGLE_LAYER`)
   - Each layer can be turned on/off independently
   - Default: municipalities on, others off
-- [ ] Jurisdiction highlighting
+- [ ] Build `<JurisdictionHighlight />` component
+  - Reads `lookupResult` from `MapContext`
   - After a `/lookup` response, highlight the jurisdictions that intersect the pin/buffer
   - Use a distinct renderer (bold outline, color fill) for matched jurisdictions
-  - Clear highlights when the pin moves (new lookup needed)
+  - Clear highlights when the pin moves (new lookup needed) via `useEffect` on `pin` state
 
 ### Phase 3 — Integrate & Polish (Weeks 6–7)
 
-#### 3.1 Make it field-ready
+#### 3.1 Polish for desktop
 
-- [ ] Responsive layout
-  - Test at 375px width (iPhone SE) and 768px (tablet)
-  - Map fills available viewport height; controls stack below or in a collapsible panel
-  - Touch targets at least 44×44px (Apple HIG)
+- [ ] Desktop layout
+  - Map fills available viewport height; controls in a sidebar or panel alongside the map
+  - Optimized for desktop screen widths (1024px+)
 - [ ] "Use my location" button
   - Browser Geolocation API (`navigator.geolocation.getCurrentPosition`)
   - On success: drop pin, center map, populate coordinates
   - On failure/denial: show a clear message, do not block usage
-  - GPS accuracy indicator (optional): show accuracy radius if > 50 m
 - [ ] Performance
   - Lazy-load overlay layers; don't block initial map render
   - Cache geocoding results to minimize ArcGIS credit usage
@@ -135,10 +150,13 @@ A pin placed by search or click sends its coordinates to the intake form, and th
 
 | Decision | Notes |
 | --- | --- |
-| ArcGIS SDK version | 4.x (not 3.x); ES modules build |
+| Frontend framework | React 18 + TypeScript, built with Vite |
+| ArcGIS SDK | `@arcgis/core` 4.x (ES modules, tree-shakable) |
+| State management | React Context + `useReducer` (no Redux needed at this scale) |
 | Coordinate system | WGS 84 (EPSG:4326) for display and API; layers reprojected by WS3 |
 | Buffer calculation | Geodesic (accounts for earth curvature) via `geometryEngine.geodesicBuffer` |
 | Single pin | Only one active spill pin at a time; multi-incident is out of scope for v1 |
+| Target platform | Desktop browsers (Chrome, Safari, Firefox); mobile is post-v1 |
 | API key scope | Geocoding + basemaps; confirm license tier covers expected usage (see open questions) |
 
 ## Risks
@@ -146,9 +164,7 @@ A pin placed by search or click sends its coordinates to the intake form, and th
 | Risk | Mitigation |
 | --- | --- |
 | ArcGIS credit/licensing limits on geocoding | Cache results; confirm tier early; monitor usage |
-| Poor GPS accuracy in field conditions | Show accuracy indicator; allow manual pin adjustment |
 | Layer data not ready from WS3 on time | Build layer toggle infrastructure with mock layers; swap in real data when available |
-| Mobile performance with multiple overlay layers | Lazy-load layers; use vector tiles where possible; test on low-end devices |
 
 ## Open Questions
 
@@ -159,17 +175,36 @@ A pin placed by search or click sends its coordinates to the intake form, and th
 ## File Structure (Proposed)
 
 ```
-src/
-  map/
-    MapView.js          # Map initialization and configuration
-    BasemapConfig.js    # Basemap and center/zoom defaults
-  widgets/
-    SearchWidget.js     # Location search with county bias
-    PinManager.js       # Click-to-pin, drag, coordinate display
-    BufferManager.js    # Impact buffer drawing and reactivity
-    LayerToggle.js      # Overlay layer toggle panel
-    GeolocateButton.js  # "Use my location" button
-  utils/
-    coordinates.js      # Formatting, validation, bounds checking
-    events.js           # onPinChange, onBufferChange event bus
+frontend/
+  public/
+    assets/               # @arcgis/core assets (copied at build)
+  src/
+    App.tsx               # Root component, wraps MapProvider
+    main.tsx              # Vite entry point
+    context/
+      MapContext.tsx       # React Context + useReducer (pin, buffer, lookupResult, activeOverlays)
+      mapReducer.ts        # Reducer: SET_PIN, SET_BUFFER, SET_LOOKUP_RESULT, TOGGLE_LAYER
+      types.ts             # Shared state types (Pin, BufferState, LookupResult)
+    components/
+      MapView.tsx          # ArcGIS MapView initialization (useEffect + ref)
+      SpillPin.tsx         # Click-to-pin, drag to adjust
+      ImpactBuffer.tsx     # Geodesic buffer circle, reactive to context
+      CoordinateDisplay.tsx  # Read-only lat/lon display
+      CoordinateInput.tsx    # Manual lat/lon entry
+      LayerToggle.tsx      # Overlay layer checkbox panel
+      JurisdictionHighlight.tsx  # Highlight matched jurisdictions after lookup
+      GeolocateButton.tsx  # "Use my location" browser geolocation
+      SearchWidget.tsx     # ArcGIS Search widget wrapper
+    hooks/
+      useMapView.ts        # Custom hook: init and teardown ArcGIS MapView
+      useGeolocation.ts    # Custom hook: browser geolocation API
+    utils/
+      coordinates.ts       # Formatting, validation, bounds checking
+      bufferTable.ts       # Spill quantity → buffer radius lookup
+    types/
+      arcgis.d.ts          # Additional ArcGIS type declarations if needed
+  .env.example             # VITE_ARCGIS_API_KEY=
+  vite.config.ts
+  tsconfig.json
+  package.json
 ```
