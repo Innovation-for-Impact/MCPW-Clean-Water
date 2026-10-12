@@ -24,7 +24,7 @@ A web application for reporting water spills in Macomb County, MI. A reporter en
 | # | Workstream | Description |
 | --- | --- | --- |
 | WS1 | Map & Geotagging UI | Map with search, click-to-pin, and impact buffer |
-| WS2 | Incident Intake & Parsing | Structured form + free-text parser → validated incident |
+| WS2 | Incident Intake & Parsing | Structured form + free-text parser → validated incident → event output for dashboard & Accela integration |
 | WS3 | Jurisdiction Layers & Spatial Query | Point/buffer → list of jurisdictions + downstream path |
 | WS4 | Contacts Directory & Rules Engine | Jurisdictions + material + size → contacts with deadlines |
 | WS5 | Backend API & Data Model | REST API (`/lookup`, `/incidents`), DB, incident storage |
@@ -33,8 +33,9 @@ A web application for reporting water spills in Macomb County, MI. A reporter en
 ## API Endpoints
 
 - `POST /lookup` — location + spill details → jurisdictions + contacts
-- `POST /incidents` — save an incident and its lookup result
+- `POST /incidents` — save an incident and its lookup result; emits an incident event for external consumers (dashboard, Accela)
 - `GET /incidents/{id}` — fetch a saved incident
+- `GET /events` — stream or poll incident events for dashboard and integration consumers
 - `GET /health` — status check
 
 ## Getting Started
@@ -54,9 +55,9 @@ docker compose up
 
 ## Scope
 
-**v1:** Spills to water in Macomb County (Lake St. Clair, Clinton River and tributaries, county drains, storm sewers). Single incident at a time, manual contact via call/email links, saved incident record.
+**v1:** Spills to water in Macomb County (Lake St. Clair, Clinton River and tributaries, county drains, storm sewers). Single incident at a time, manual contact via call/email links, saved incident record. Intake emits structured incident events consumable by an external dashboard and the Accela platform.
 
-**Out of scope for v1:** Automated notifications, plume modeling, mobile-native apps.
+**Out of scope for v1:** Automated notifications, plume modeling, mobile-native apps, full Accela workflow automation (v1 provides the event hook only).
 
 ## Project Milestones
 

@@ -12,9 +12,9 @@ A reporter enters a short summary of a water spill in Macomb County, MI (locatio
 4. Rules engine maps jurisdictions × material × size to required contacts.
 5. Results show two panels: Response (who acts now) and Regulatory (who must be notified, and by when).
 
-**In scope for v1:** spills to water in Macomb County (Lake St. Clair, Clinton River and tributaries, county drains, storm sewers), single incident at a time, manual contact (call/email links), saved incident record.
+**In scope for v1:** spills to water in Macomb County (Lake St. Clair, Clinton River and tributaries, county drains, storm sewers), single incident at a time, manual contact (call/email links), saved incident record. Intake emits structured incident events consumable by an external dashboard and the Accela platform.
 
-**Out of scope for v1:** automated notifications, plume modeling, mobile-native apps.
+**Out of scope for v1:** automated notifications, plume modeling, mobile-native apps, full Accela workflow automation (v1 provides the event hook only).
 
 ## System architecture
 
@@ -32,10 +32,16 @@ flowchart LR
     WS5 --> WS3["Geo query (WS3)<br/>drains, river, lake"]
     WS3 -->|jurisdiction IDs + downstream path| WS4["Rules engine (WS4)<br/>contacts by area"]
     WS4 --> WS6
+    WS5 -->|incident event| EXT
 
     subgraph WS6["Results UI (WS6)"]
         R["Response: act now<br/>911/fire, municipal DPW,<br/>County EM, USCG Sector Detroit"]
         G["Regulatory: notify<br/>NRC, EGLE PEAS, County Public Works,<br/>Health Dept, EPA Region 5"]
+    end
+
+    subgraph EXT["External Integrations"]
+        DASH["Dashboard<br/>incident feed & status"]
+        ACC["Accela Platform<br/>permit & inspection workflow"]
     end
 ```
 
@@ -48,7 +54,7 @@ Six workstreams, one owner each. WS3 and WS4 are the critical path: the results 
 | # | Workstream | Owner | Depends on | Key deliverable |
 | --- | --- | --- | --- | --- |
 | WS1 | Map & geotagging UI | | — | Map with search, click-to-pin, size buffer |
-| WS2 | Incident intake & parsing | | WS5 schema | Form + free-text parser → structured incident |
+| WS2 | Incident intake & parsing | | WS5 schema | Form + free-text parser → structured incident → event output |
 | WS3 | Jurisdiction layers & spatial query | | — | Point/buffer → list of jurisdictions |
 | WS4 | Contacts directory & rules engine | | WS3 jurisdiction IDs | Jurisdictions + material + size → contacts |
 | WS5 | Backend API & data model | | — | REST API, DB, incident storage |
@@ -109,7 +115,12 @@ Six workstreams, one owner each. WS3 and WS4 are the critical path: the results 
 - [ ] **Build a test set**
   - Write 20+ sample summaries with expected outputs; all must pass before the pilot
 
-**Hands off to:** WS5 (validated incident). **Needs from:** WS1 (pin), WS4 (material categories).
+- [ ] **Emit incident events**
+  - On successful intake, produce a structured incident event (JSON) containing location, material, size, timestamp, jurisdictions, and status
+  - Events are published via the backend (WS5) for consumption by an external dashboard or the Accela platform
+  - Event schema must be stable and versioned so external consumers don't break on changes
+
+**Hands off to:** WS5 (validated incident + event). **Needs from:** WS1 (pin), WS4 (material categories).
 
 ### WS3 — Jurisdiction layers & spatial query
 
@@ -187,9 +198,15 @@ Six workstreams, one owner each. WS3 and WS4 are the critical path: the results 
   - Share the auto-generated API docs with WS1, WS2, and WS6
 - [ ] **Build the endpoints**
   - `POST /lookup`: location + spill details → jurisdictions (WS3) + contacts (WS4)
-  - `POST /incidents`: save an incident and its lookup result
+  - `POST /incidents`: save an incident and its lookup result; emit an incident event
   - `GET /incidents/{id}`: fetch a saved incident
+  - `GET /events`: stream or poll incident events for external consumers (dashboard, Accela)
   - `GET /health`: status check for hosting
+- [ ] **Event publishing & integration hooks**
+  - On incident creation/update, publish a versioned incident event to the events endpoint
+  - Event payload: incident ID, location, material, size, timestamp, jurisdictions, contacts, status
+  - Provide a webhook or polling mechanism so an external dashboard can consume events in near-real-time
+  - Add an Accela integration hook: map incident events to Accela record creation (permit, inspection, or service request) via Accela's Construct API; v1 delivers the event shape and a stub adapter — full Accela workflow automation is post-v1
 - [ ] **Set up the database**
   - Tables for incidents, contacts, rules, and jurisdictions
   - Use migrations (Alembic) so schema changes are tracked
@@ -270,3 +287,6 @@ The biggest risk is a wrong or stale contact during a real spill, so every conta
 - [ ] ArcGIS Online org account, or developer API key only?
 - [ ] Does v1 need saved incident history, or lookup only?
 - [ ] Should size thresholds use the regulatory reportable-quantity tables from day one?
+- [ ] What Accela record type should incident events map to (service request, permit, inspection)?
+- [ ] Does the county already have an Accela Construct API key and environment, or does one need to be provisioned?
+- [ ] What external dashboard will consume incident events, and does it need push (webhook) or pull (polling)?
