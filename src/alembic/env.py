@@ -16,8 +16,9 @@ if config.config_file_name is not None:
 
 # Override sqlalchemy.url from environment variable
 database_url = os.environ.get("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+if not database_url:
+    raise RuntimeError("DATABASE_URL environment variable is required for migrations")
+config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata
 
