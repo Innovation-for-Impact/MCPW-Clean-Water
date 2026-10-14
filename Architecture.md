@@ -190,33 +190,39 @@ Six workstreams, one owner each. WS3 and WS4 are the critical path: the results 
 
 **Done when:** All endpoints are deployed with docs, and the frontend can run a full lookup end to end.
 
-- [ ] **Set up the stack**
-  - FastAPI (Python) + PostgreSQL with PostGIS
+- [x] **Set up the stack**
+  - FastAPI (Python) + PostgreSQL with PostGIS + async SQLAlchemy 2.x + asyncpg + GeoAlchemy2
   - Docker Compose for local development so everyone runs the same setup
-- [ ] **Publish the API contract in week 1**
+- [x] **Publish the API contract in week 1**
   - Define models for Incident, Jurisdiction, Contact, and LookupResult
   - Share the auto-generated API docs with WS1, WS2, and WS6
-- [ ] **Build the endpoints**
-  - `POST /lookup`: location + spill details → jurisdictions (WS3) + contacts (WS4)
+  - `openapi.json` exported to repo with all 9 endpoints
+- [x] **Build the endpoints**
+  - `POST /lookup`: location + spill details → jurisdictions (WS3) + contacts (WS4) *(mock until WS3/WS4 ready)*
   - `POST /incidents`: save an incident and its lookup result; emit an incident event
   - `GET /incidents/{id}`: fetch a saved incident
-  - `GET /events`: stream or poll incident events for external consumers (dashboard, Accela)
+  - `GET /events`: poll incident events for external consumers (dashboard, Accela)
+  - `POST /auth/login`: JWT authentication
+  - `POST /auth/register`: admin-only user registration
+  - `POST/GET/DELETE /webhooks`: admin-only webhook management
   - `GET /health`: status check for hosting
-- [ ] **Event publishing & integration hooks**
-  - On incident creation/update, publish a versioned incident event to the events endpoint
-  - Event payload: incident ID, location, material, size, timestamp, jurisdictions, contacts, status
-  - Provide a webhook or polling mechanism so an external dashboard can consume events in near-real-time
-  - Add an Accela integration hook: map incident events to Accela record creation (permit, inspection, or service request) via Accela's Construct API; v1 delivers the event shape and a stub adapter — full Accela workflow automation is post-v1
-- [ ] **Set up the database**
-  - Tables for incidents, contacts, rules, and jurisdictions
-  - Use migrations (Alembic) so schema changes are tracked
-- [ ] **Add access control**
-  - Login for responders; viewers are read-only
+- [x] **Event publishing & integration hooks**
+  - On incident creation, publish a versioned incident event to the events table (JSONB)
+  - Webhook dispatch: async BackgroundTask with concurrent delivery, SSRF protection, 5s timeout
+  - Accela stub adapter: logs mapped payload, configurable via env vars
+- [x] **Set up the database**
+  - Tables for incidents, contacts, rules, jurisdictions, events, users, webhooks, and join tables
+  - Alembic async migrations with PostGIS support
+- [x] **Add access control**
+  - JWT auth with PyJWT + bcrypt; three roles: responder, viewer, admin
+  - `RequireRole` dependency for per-endpoint RBAC enforcement
   - All keys and passwords in environment variables
-- [ ] **Add an audit trail**
+- [x] **Add an audit trail**
   - Timestamp every incident create and update
+  - Authenticated user ID recorded in every event payload (`created_by`)
 - [ ] **Write tests**
-  - Unit tests for each endpoint, run automatically on every push
+  - E2E test script passing (34/34 assertions); unit/integration tests pending
+  - Run automatically on every push (CI pending)
 
 **Hands off to:** everyone (API URL + docs). **Needs from:** WS3 (lookup query), WS4 (rules engine).
 

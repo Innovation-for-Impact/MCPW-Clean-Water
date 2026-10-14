@@ -27,30 +27,63 @@ A web application for reporting water spills in Macomb County, MI. A reporter en
 | WS2 | Incident Intake & Parsing | Structured form + free-text parser → validated incident → event output for dashboard & Accela integration |
 | WS3 | Jurisdiction Layers & Spatial Query | Point/buffer → list of jurisdictions + downstream path |
 | WS4 | Contacts Directory & Rules Engine | Jurisdictions + material + size → contacts with deadlines |
-| WS5 | Backend API & Data Model | REST API (`/lookup`, `/incidents`), DB, incident storage |
+| WS5 | Backend API & Data Model | REST API (10 endpoints), DB, JWT auth, RBAC, audit trail, webhooks — **Phases 1–3 complete** |
 | WS6 | Results UI, QA & Deployment | Response/Regulatory panels, end-to-end tests, hosting |
 
 ## API Endpoints
 
-- `POST /lookup` — location + spill details → jurisdictions + contacts
-- `POST /incidents` — save an incident and its lookup result; emits an incident event for external consumers (dashboard, Accela)
-- `GET /incidents/{id}` — fetch a saved incident
-- `GET /events` — stream or poll incident events for dashboard and integration consumers
-- `GET /health` — status check
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/health` | No | Status check |
+| `POST` | `/auth/login` | No | Authenticate, receive JWT |
+| `POST` | `/auth/register` | Admin | Register a new user |
+| `POST` | `/lookup` | Responder+ | Location + spill details → jurisdictions + contacts |
+| `POST` | `/incidents` | Responder+ | Save incident, emit event |
+| `GET` | `/incidents/{id}` | Viewer+ | Fetch saved incident |
+| `GET` | `/events` | Viewer+ | Poll incident events (dashboard, Accela) |
+| `POST` | `/webhooks` | Admin | Register a webhook URL |
+| `GET` | `/webhooks` | Admin | List registered webhooks |
+| `DELETE` | `/webhooks/{id}` | Admin | Remove a webhook |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.x
-- PostgreSQL with PostGIS
-- ArcGIS developer API key (store in env file, never in the repo)
-- Docker Compose (for local development)
+- Docker & Docker Compose
+- Python 3.11+ (for running scripts outside Docker)
 
 ### Local Development
 
 ```bash
-docker compose up
+# 1. Copy env template and set SECRET_KEY
+cp .env.example .env
+
+# 2. Start services (API + PostGIS database)
+docker compose up -d
+
+# 3. Run database migrations
+docker compose exec api alembic upgrade head
+
+# 4. Seed dev users (admin/admin123, responder/responder123, viewer/viewer123)
+docker compose exec api python -m scripts.seed_users
+
+# 5. Run E2E tests
+./scripts/test_e2e.sh
+```
+
+API is available at `http://localhost:8000`. Interactive docs at `/docs` (Swagger) and `/redoc`.
+
+### Authentication
+
+```bash
+# Get a JWT token
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"responder","password":"responder123"}'
+
+# Use the token
+curl http://localhost:8000/events \
+  -H "Authorization: Bearer <token>"
 ```
 
 ## Scope

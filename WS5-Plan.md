@@ -1,5 +1,23 @@
 # WS5 — Backend API & Data Model: Implementation Plan
 
+## Progress Summary
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| Phase 1 — Foundations | **Complete** | Stack, Docker, all Pydantic models, OpenAPI docs exported |
+| Phase 2 — Core Build | **Complete** | All DB models, migrations, all endpoints, event publishing, webhooks, Accela stub |
+| Phase 3.1–3.2 — Auth & Audit | **Complete** | JWT auth (PyJWT), RBAC (3 roles), audit trail with user ID in events |
+| Phase 3.3 — WS3/WS4 Integration | **Blocked** | Waiting on WS3 spatial queries and WS4 rules engine |
+| Phase 4.1 — Tests | **In Progress** | E2E script (34/34 passing); unit/integration tests pending |
+| Phase 4.2 — Pilot Readiness | **Pending** | Waiting on WS6 scenarios and pilot demo |
+
+**Key security hardening completed:**
+- Replaced `python-jose` with `PyJWT` (CVE fixes)
+- SSRF protection: DNS resolution + private IP checks at registration and dispatch time
+- `SECRET_KEY` and `DATABASE_URL` raise `RuntimeError` if unset
+- Single atomic transaction for incident + associations + event (no dual-commit)
+- Webhook dispatch in background task with its own DB session
+
 ## Goal
 
 One API that ties intake, spatial lookup, and contact rules together — and emits incident events for external consumers (dashboard, Accela).
@@ -38,28 +56,28 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
 
 #### 1.1 Set up the stack
 
-- [ ] Create the backend project structure (see file structure below)
-- [ ] Set up FastAPI application with CORS middleware
+- [x] Create the backend project structure (see file structure below)
+- [x] Set up FastAPI application with CORS middleware
   - Allow origins for the frontend dev server and production URL
-- [ ] Configure PostgreSQL + PostGIS connection
+- [x] Configure PostgreSQL + PostGIS connection
   - Use `asyncpg` for async database access via SQLAlchemy async engine
   - Connection string from environment variable (`DATABASE_URL`)
-- [ ] Write `Dockerfile` for the API service
+- [x] Write `Dockerfile` for the API service
   - Python 3.11+ slim image
   - Install PostGIS client libraries for GeoAlchemy2
-- [ ] Write `docker-compose.yml`
+- [x] Write `docker-compose.yml`
   - Services: `api` (FastAPI), `db` (PostgreSQL + PostGIS)
   - Persistent volume for database data
   - Environment variables from `.env` file
   - Health checks on both services
-- [ ] Verify `docker compose up` brings up a working API at `localhost:8000`
-- [ ] Add `GET /health` endpoint
+- [x] Verify `docker compose up` brings up a working API at `localhost:8000`
+- [x] Add `GET /health` endpoint
   - Returns `{"status": "ok", "db": "connected"}` or appropriate error
   - Checks database connectivity
 
 #### 1.2 Publish the API contract (Week 1 deliverable)
 
-- [ ] Define Pydantic models for all API types:
+- [x] Define Pydantic models for all API types:
 
   **Incident**
   ```python
@@ -148,7 +166,7 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
       status: IncidentStatus
   ```
 
-- [ ] Share auto-generated OpenAPI docs with WS1, WS2, and WS6
+- [x] Share auto-generated OpenAPI docs with WS1, WS2, and WS6
   - Swagger UI at `/docs`
   - ReDoc at `/redoc`
   - Export `openapi.json` to the repo for version tracking
@@ -157,7 +175,7 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
 
 #### 2.1 Set up the database
 
-- [ ] Define SQLAlchemy models for all tables:
+- [x] Define SQLAlchemy models for all tables:
 
   | Table | Key columns |
   | --- | --- |
@@ -169,35 +187,37 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
   | `incident_contacts` | incident_id (FK), contact_id (FK), role, deadline |
   | `events` | id (UUID PK), event_type, event_version, timestamp, incident_id (FK), payload (JSONB) |
 
-- [ ] Create initial Alembic migration
+- [x] Create initial Alembic migration
   - `alembic init alembic`
   - Configure to use async engine
   - Generate and apply the initial migration
-- [ ] Add spatial indexes on `incidents.location` and `jurisdictions.geometry`
-- [ ] Seed jurisdiction data (coordinate with WS3 on import scripts)
+- [x] Add spatial indexes on `incidents.location` and `jurisdictions.geometry`
+- [x] Seed jurisdiction data (coordinate with WS3 on import scripts)
 
 #### 2.2 Build the endpoints
 
-- [ ] `POST /lookup`
+- [x] `POST /lookup`
   - Input: `LookupRequest` (location + material + quantity + buffer)
   - Call WS3 spatial query: intersect point/buffer with jurisdiction layers
   - Call WS4 rules engine: jurisdictions + material + size → contacts
   - Return: `LookupResult` with jurisdictions, downstream path, response contacts, regulatory contacts
   - No database write — this is a stateless query
+  - *Note: currently uses mock spatial query and mock rules engine; will wire to WS3/WS4 in Phase 3.3*
 
-- [ ] `POST /incidents`
+- [x] `POST /incidents`
   - Input: `IncidentCreate`
   - Validate all fields; reject if required fields missing
   - Save to `incidents` table
   - Run the `/lookup` logic internally and store results in `incident_jurisdictions` and `incident_contacts`
   - Emit an incident event (see 2.3)
   - Return: `Incident` with id, created_at, and full lookup result
+  - *Incident creation, association storage, and event emission are in a single atomic transaction*
 
-- [ ] `GET /incidents/{id}`
+- [x] `GET /incidents/{id}`
   - Return the saved incident with its jurisdiction and contact data
   - 404 if not found
 
-- [ ] `GET /events`
+- [x] `GET /events`
   - Query the `events` table, ordered by timestamp descending
   - Support query parameters:
     - `since` (ISO datetime) — return events after this timestamp
@@ -205,23 +225,26 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
     - `incident_id` (UUID, optional) — filter to a specific incident
   - Return: `list[IncidentEvent]`
 
-- [ ] `GET /health`
+- [x] `GET /health`
   - Check DB connectivity; return status
 
 #### 2.3 Event publishing & integration hooks
 
-- [ ] Implement the event publishing flow:
+- [x] Implement the event publishing flow:
   - On `POST /incidents` (creation): write an `incident.created` event to the `events` table with the full incident payload as JSONB
   - On incident status update: write an `incident.updated` event
   - Each event gets a unique `event_id` (UUID) and `event_version: "1.0"`
+  - *Event creation is atomic with incident creation (single DB transaction)*
 
-- [ ] Webhook support (optional, if dashboard needs push):
+- [x] Webhook support (optional, if dashboard needs push):
   - `webhook_urls` table: id, url, active, created_at
   - On event creation, POST the event payload to all active webhook URLs
   - Fire-and-forget with a short timeout (5s); log failures but don't retry in v1
   - Admin endpoints: `POST /webhooks`, `DELETE /webhooks/{id}`, `GET /webhooks`
+  - *Webhook dispatch runs as a BackgroundTask with its own DB session*
+  - *Concurrent delivery via asyncio.gather; SSRF protection at both registration and dispatch time*
 
-- [ ] Accela integration stub:
+- [x] Accela integration stub:
   - Create `src/integrations/accela.py` with an adapter interface:
     ```python
     class AccelaAdapter:
@@ -243,34 +266,41 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
 
 #### 3.1 Add access control
 
-- [ ] Authentication
+- [x] Authentication
   - JWT-based auth with login endpoint (`POST /auth/login`)
   - User table: id, username, password_hash, role (responder, viewer, admin)
-  - Password hashing with bcrypt
-- [ ] Authorization
+  - Password hashing with bcrypt (via passlib + bcrypt==4.0.1)
+  - PyJWT for token creation/validation (replaced python-jose due to CVEs)
+  - `SECRET_KEY` required via environment variable (RuntimeError if unset)
+- [x] Authorization
   - Responders: can create incidents, run lookups
   - Viewers: read-only access to incidents and events
   - Admins: manage contacts, rules, webhooks, and users
-- [ ] Middleware
-  - Require auth on all endpoints except `/health` and `/docs`
+  - Admin-only user registration endpoint (`POST /auth/register`)
+- [x] Middleware
+  - Require auth on all endpoints except `/health`, `/docs`, and `/auth/login`
   - All keys and passwords in environment variables, never in code
+  - `RequireRole` dependency class for per-endpoint role enforcement
 
 #### 3.2 Add an audit trail
 
-- [ ] Timestamp every incident record on create (`created_at`) and update (`updated_at`)
-- [ ] Log all state changes to the `events` table (doubles as audit log)
-- [ ] Include the authenticated user ID in each event payload
+- [x] Timestamp every incident record on create (`created_at`) and update (`updated_at`)
+- [x] Log all state changes to the `events` table (doubles as audit log)
+- [x] Include the authenticated user ID in each event payload (`created_by` field)
 
 #### 3.3 Integration testing with WS3 and WS4
 
-- [ ] Wire WS3 spatial query into `/lookup` — replace mock with live PostGIS queries
-- [ ] Wire WS4 rules engine into `/lookup` — replace mock with live rules table
+- [ ] Wire WS3 spatial query into `/lookup` — replace mock with live PostGIS queries *(blocked on WS3)*
+- [ ] Wire WS4 rules engine into `/lookup` — replace mock with live rules table *(blocked on WS4)*
 - [ ] End-to-end test: submit incident → verify jurisdictions, contacts, and event are correct
 
 ### Phase 4 — Pilot (Week 8)
 
 #### 4.1 Write tests
 
+- [x] E2E test script (`scripts/test_e2e.sh`) — 34 assertions across all endpoints
+  - Covers: health, auth, RBAC, lookup, incidents, events, webhooks, SSRF, validation, registration
+  - All 34 tests passing
 - [ ] Unit tests for each endpoint using pytest + httpx async test client
   - Test happy paths and error cases (400, 404, 401)
   - Mock WS3/WS4 dependencies for unit tests
