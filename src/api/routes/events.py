@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import get_db
+from src.api.dependencies import RequireRole, get_db
 from src.models.event import Event
+from src.models.user import User
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ async def list_events(
     limit: int = Query(50, ge=1, le=200),
     incident_id: uuid.UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
+    _user: User = Depends(RequireRole("viewer", "responder", "admin")),
 ):
     stmt = select(Event).order_by(Event.timestamp.desc())
 

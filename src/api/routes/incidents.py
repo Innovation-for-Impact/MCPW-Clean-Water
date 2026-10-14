@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 from starlette.responses import JSONResponse
 
-from src.api.dependencies import get_db
+from src.api.dependencies import RequireRole, get_db
 from src.models.incident import Incident as IncidentModel
+from src.models.user import User
 from src.schemas.enums import IncidentStatus
 from src.schemas.incident import Incident, IncidentCreate
 from src.services.events import dispatch_webhooks
@@ -19,8 +20,12 @@ router = APIRouter()
 
 
 @router.post("/incidents", response_model=Incident, status_code=201)
-async def post_incident(body: IncidentCreate, db: AsyncSession = Depends(get_db)):
-    incident, event = await create_incident(db, body)
+async def post_incident(
+    body: IncidentCreate,
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(RequireRole("responder", "admin")),
+):
+    incident, event = await create_incident(db, body, user_id=_user.id)
 
     # Serialize event data for the background task (which uses its own DB session)
     event_data = {
@@ -59,7 +64,11 @@ async def post_incident(body: IncidentCreate, db: AsyncSession = Depends(get_db)
 
 
 @router.get("/incidents/{incident_id}", response_model=Incident)
-async def get_incident(incident_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_incident(
+    incident_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(RequireRole("viewer", "responder", "admin")),
+):
     geom = cast(IncidentModel.location, Geometry(srid=4326))
     stmt = select(
         IncidentModel,

@@ -15,7 +15,9 @@ from src.services.events import build_event
 from src.services.lookup import run_lookup
 
 
-async def create_incident(db: AsyncSession, body: IncidentCreate) -> tuple[IncidentModel, "Event"]:
+async def create_incident(
+    db: AsyncSession, body: IncidentCreate, user_id: int | None = None
+) -> tuple[IncidentModel, "Event"]:
     """Create an incident with jurisdiction/contact associations and event in a single transaction.
 
     Returns (incident, event) after commit. Caller dispatches webhooks as a background task.
@@ -93,6 +95,7 @@ async def create_incident(db: AsyncSession, body: IncidentCreate) -> tuple[Incid
         "jurisdictions": [j.model_dump() for j in lookup_result.jurisdictions],
         "contacts": [c.model_dump(mode="json") for c in all_contacts],
         "status": IncidentStatus.open.value,
+        "created_by": user_id,
     }
     event = build_event("incident.created", incident.id, event_payload)
     db.add(event)
