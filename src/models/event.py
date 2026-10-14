@@ -25,6 +25,3 @@ class Event(Base):
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
     incident: Mapped["Incident"] = relationship(back_populates="events")
-
-
-from src.models.incident import Incident  # noqa: E402, F401

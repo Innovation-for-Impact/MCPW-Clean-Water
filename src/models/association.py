@@ -44,7 +44,3 @@ class IncidentContact(Base):
 
     incident: Mapped["Incident"] = relationship(back_populates="contacts")
     contact: Mapped["Contact"] = relationship()
-
-
-from src.models.contact import Contact  # noqa: E402, F401
-from src.models.incident import Incident  # noqa: E402, F401

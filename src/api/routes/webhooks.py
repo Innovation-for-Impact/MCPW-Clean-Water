@@ -1,46 +1,12 @@
-import ipaddress
-import urllib.parse
-
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db
 from src.models.webhook import Webhook
+from src.schemas.webhook import WebhookCreate, WebhookResponse
 
 router = APIRouter()
-
-
-class WebhookCreate(BaseModel):
-    url: str
-
-    @field_validator("url")
-    @classmethod
-    def validate_url(cls, v: str) -> str:
-        parsed = urllib.parse.urlparse(v)
-        if parsed.scheme not in ("https", "http"):
-            raise ValueError("URL must use http or https scheme")
-        hostname = parsed.hostname
-        if not hostname:
-            raise ValueError("URL must have a valid hostname")
-        try:
-            addr = ipaddress.ip_address(hostname)
-            if addr.is_private or addr.is_loopback or addr.is_reserved:
-                raise ValueError("URL must not point to a private or reserved IP address")
-        except ValueError as e:
-            if "does not appear to be" not in str(e):
-                raise
-        return v
-
-
-class WebhookResponse(BaseModel):
-    id: int
-    url: str
-    active: bool
-    created_at: str
-
-    model_config = {"from_attributes": True}
 
 
 @router.post("/webhooks", response_model=WebhookResponse, status_code=201)

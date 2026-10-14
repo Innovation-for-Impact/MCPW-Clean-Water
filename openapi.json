@@ -1,29 +1,896 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "MCPW Clean Water API",
-    "description": "Backend API for the Macomb County Public Works Clean Water incident response system.",
-    "version": "1.0.0"
-  },
-  "paths": {
-    "/health": {
-      "get": {
-        "tags": [
-          "Health"
-        ],
-        "summary": "Health Check",
-        "operationId": "health_check_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
+    "openapi": "3.1.0",
+    "info": {
+        "title": "MCPW Clean Water API",
+        "description": "Backend API for the Macomb County Public Works Clean Water incident response system.",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health Check",
+                "operationId": "health_check_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
             }
-          }
+        },
+        "/lookup": {
+            "post": {
+                "tags": [
+                    "Lookup"
+                ],
+                "summary": "Lookup",
+                "operationId": "lookup_lookup_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LookupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LookupResult"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/incidents": {
+            "post": {
+                "tags": [
+                    "Incidents"
+                ],
+                "summary": "Post Incident",
+                "operationId": "post_incident_incidents_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IncidentCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Incident"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/incidents/{incident_id}": {
+            "get": {
+                "tags": [
+                    "Incidents"
+                ],
+                "summary": "Get Incident",
+                "operationId": "get_incident_incidents__incident_id__get",
+                "parameters": [
+                    {
+                        "name": "incident_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Incident Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Incident"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/events": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "List Events",
+                "operationId": "list_events_events_get",
+                "parameters": [
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Return events after this ISO datetime",
+                            "title": "Since"
+                        },
+                        "description": "Return events after this ISO datetime"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 200,
+                            "minimum": 1,
+                            "default": 50,
+                            "title": "Limit"
+                        }
+                    },
+                    {
+                        "name": "incident_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Incident Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks": {
+            "get": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "List Webhooks",
+                "operationId": "list_webhooks_webhooks_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/WebhookResponse"
+                                    },
+                                    "type": "array",
+                                    "title": "Response List Webhooks Webhooks Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Create Webhook",
+                "operationId": "create_webhook_webhooks_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebhookResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/{webhook_id}": {
+            "delete": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Delete Webhook",
+                "operationId": "delete_webhook_webhooks__webhook_id__delete",
+                "parameters": [
+                    {
+                        "name": "webhook_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Webhook Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-      }
+    },
+    "components": {
+        "schemas": {
+            "Contact": {
+                "properties": {
+                    "agency": {
+                        "type": "string",
+                        "title": "Agency"
+                    },
+                    "role": {
+                        "$ref": "#/components/schemas/ContactRole"
+                    },
+                    "jurisdiction_id": {
+                        "type": "string",
+                        "title": "Jurisdiction Id"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "title": "Phone"
+                    },
+                    "after_hours_phone": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "After Hours Phone"
+                    },
+                    "email": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Email"
+                    },
+                    "hours": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Hours"
+                    },
+                    "reporting_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reporting Deadline"
+                    },
+                    "source_url": {
+                        "type": "string",
+                        "title": "Source Url"
+                    },
+                    "last_verified": {
+                        "type": "string",
+                        "format": "date",
+                        "title": "Last Verified"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "agency",
+                    "role",
+                    "jurisdiction_id",
+                    "phone",
+                    "source_url",
+                    "last_verified"
+                ],
+                "title": "Contact"
+            },
+            "ContactRole": {
+                "type": "string",
+                "enum": [
+                    "response",
+                    "regulatory"
+                ],
+                "title": "ContactRole"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "Incident": {
+                "properties": {
+                    "location": {
+                        "$ref": "#/components/schemas/Location"
+                    },
+                    "water_body": {
+                        "$ref": "#/components/schemas/WaterBodyType"
+                    },
+                    "material": {
+                        "$ref": "#/components/schemas/MaterialType"
+                    },
+                    "material_detail": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Material Detail"
+                    },
+                    "quantity": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity"
+                    },
+                    "quantity_unit": {
+                        "$ref": "#/components/schemas/QuantityUnit",
+                        "default": "gal"
+                    },
+                    "quantity_gallons": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Gallons"
+                    },
+                    "time_observed": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Time Observed"
+                    },
+                    "reporter_name": {
+                        "type": "string",
+                        "title": "Reporter Name"
+                    },
+                    "reporter_phone": {
+                        "type": "string",
+                        "title": "Reporter Phone"
+                    },
+                    "notes": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notes"
+                    },
+                    "buffer_radius_m": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Buffer Radius M"
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/IncidentStatus"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "location",
+                    "water_body",
+                    "material",
+                    "time_observed",
+                    "reporter_name",
+                    "reporter_phone",
+                    "id",
+                    "created_at",
+                    "updated_at",
+                    "status"
+                ],
+                "title": "Incident"
+            },
+            "IncidentCreate": {
+                "properties": {
+                    "location": {
+                        "$ref": "#/components/schemas/Location"
+                    },
+                    "water_body": {
+                        "$ref": "#/components/schemas/WaterBodyType"
+                    },
+                    "material": {
+                        "$ref": "#/components/schemas/MaterialType"
+                    },
+                    "material_detail": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Material Detail"
+                    },
+                    "quantity": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity"
+                    },
+                    "quantity_unit": {
+                        "$ref": "#/components/schemas/QuantityUnit",
+                        "default": "gal"
+                    },
+                    "quantity_gallons": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Gallons"
+                    },
+                    "time_observed": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Time Observed"
+                    },
+                    "reporter_name": {
+                        "type": "string",
+                        "title": "Reporter Name"
+                    },
+                    "reporter_phone": {
+                        "type": "string",
+                        "title": "Reporter Phone"
+                    },
+                    "notes": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notes"
+                    },
+                    "buffer_radius_m": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Buffer Radius M"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "location",
+                    "water_body",
+                    "material",
+                    "time_observed",
+                    "reporter_name",
+                    "reporter_phone"
+                ],
+                "title": "IncidentCreate"
+            },
+            "IncidentStatus": {
+                "type": "string",
+                "enum": [
+                    "open",
+                    "closed",
+                    "under_review"
+                ],
+                "title": "IncidentStatus"
+            },
+            "Jurisdiction": {
+                "properties": {
+                    "layer": {
+                        "type": "string",
+                        "title": "Layer"
+                    },
+                    "jurisdiction_id": {
+                        "type": "string",
+                        "title": "Jurisdiction Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "layer",
+                    "jurisdiction_id",
+                    "name"
+                ],
+                "title": "Jurisdiction"
+            },
+            "Location": {
+                "properties": {
+                    "lat": {
+                        "type": "number",
+                        "title": "Lat"
+                    },
+                    "lon": {
+                        "type": "number",
+                        "title": "Lon"
+                    },
+                    "address": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Address"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "lat",
+                    "lon"
+                ],
+                "title": "Location"
+            },
+            "LookupRequest": {
+                "properties": {
+                    "location": {
+                        "$ref": "#/components/schemas/Location"
+                    },
+                    "material": {
+                        "$ref": "#/components/schemas/MaterialType"
+                    },
+                    "quantity_gallons": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Gallons"
+                    },
+                    "buffer_radius_m": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Buffer Radius M"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "location",
+                    "material"
+                ],
+                "title": "LookupRequest"
+            },
+            "LookupResult": {
+                "properties": {
+                    "jurisdictions": {
+                        "items": {
+                            "$ref": "#/components/schemas/Jurisdiction"
+                        },
+                        "type": "array",
+                        "title": "Jurisdictions"
+                    },
+                    "downstream_path": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Downstream Path"
+                    },
+                    "response_contacts": {
+                        "items": {
+                            "$ref": "#/components/schemas/Contact"
+                        },
+                        "type": "array",
+                        "title": "Response Contacts"
+                    },
+                    "regulatory_contacts": {
+                        "items": {
+                            "$ref": "#/components/schemas/Contact"
+                        },
+                        "type": "array",
+                        "title": "Regulatory Contacts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "jurisdictions",
+                    "downstream_path",
+                    "response_contacts",
+                    "regulatory_contacts"
+                ],
+                "title": "LookupResult"
+            },
+            "MaterialType": {
+                "type": "string",
+                "enum": [
+                    "oil_fuel",
+                    "chemical_hazmat",
+                    "sewage",
+                    "unknown_other"
+                ],
+                "title": "MaterialType"
+            },
+            "QuantityUnit": {
+                "type": "string",
+                "enum": [
+                    "gal",
+                    "bbl",
+                    "L",
+                    "lb"
+                ],
+                "title": "QuantityUnit"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "WaterBodyType": {
+                "type": "string",
+                "enum": [
+                    "lake_st_clair",
+                    "clinton_river",
+                    "tributary",
+                    "county_drain",
+                    "storm_sewer",
+                    "unknown"
+                ],
+                "title": "WaterBodyType"
+            },
+            "WebhookCreate": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "url"
+                ],
+                "title": "WebhookCreate"
+            },
+            "WebhookResponse": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "url": {
+                        "type": "string",
+                        "title": "Url"
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "title": "Active"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "url",
+                    "active",
+                    "created_at"
+                ],
+                "title": "WebhookResponse"
+            }
+        }
     }
-  }
 }

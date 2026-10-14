@@ -24,6 +24,3 @@ class Contact(Base):
     last_verified: Mapped[date] = mapped_column(Date, nullable=False)
 
     jurisdiction: Mapped["Jurisdiction"] = relationship(back_populates="contacts")
-
-
-from src.models.jurisdiction import Jurisdiction  # noqa: E402, F401

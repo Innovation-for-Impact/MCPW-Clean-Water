@@ -48,9 +48,3 @@ class Incident(Base):
         back_populates="incident", lazy="selectin"
     )
     events: Mapped[list["Event"]] = relationship(back_populates="incident", lazy="selectin")
-
-
-# Avoid circular import issues — these are resolved at runtime by SQLAlchemy
-from src.models.event import Event  # noqa: E402, F401
-from src.models.jurisdiction import Jurisdiction  # noqa: E402, F401
-from src.models.association import IncidentContact  # noqa: E402, F401

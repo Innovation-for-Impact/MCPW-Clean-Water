@@ -22,7 +22,3 @@ class Jurisdiction(Base):
     contacts: Mapped[list["Contact"]] = relationship(
         back_populates="jurisdiction", lazy="selectin"
     )
-
-
-from src.models.contact import Contact  # noqa: E402, F401
-from src.models.incident import Incident  # noqa: E402, F401

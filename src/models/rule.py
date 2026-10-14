@@ -19,6 +19,3 @@ class Rule(Base):
     deadline: Mapped[str | None] = mapped_column(String(100))
 
     contact: Mapped["Contact"] = relationship()
-
-
-from src.models.contact import Contact  # noqa: E402, F401
