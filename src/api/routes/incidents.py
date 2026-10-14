@@ -22,8 +22,16 @@ router = APIRouter()
 async def post_incident(body: IncidentCreate, db: AsyncSession = Depends(get_db)):
     incident, event = await create_incident(db, body)
 
-    # Dispatch webhooks in background — doesn't block the response
-    task = BackgroundTask(dispatch_webhooks, db, event)
+    # Serialize event data for the background task (which uses its own DB session)
+    event_data = {
+        "event_id": str(event.id),
+        "event_type": event.event_type,
+        "event_version": event.event_version,
+        "timestamp": event.timestamp.isoformat(),
+        "incident_id": str(event.incident_id),
+        "data": event.payload,
+    }
+    task = BackgroundTask(dispatch_webhooks, event_data)
 
     result = Incident(
         id=incident.id,

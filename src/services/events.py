@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.database import async_session_factory
 from src.models.event import Event
 from src.models.webhook import Webhook
 
@@ -29,27 +29,20 @@ def build_event(
     )
 
 
-async def dispatch_webhooks(db: AsyncSession, event: Event) -> None:
+async def dispatch_webhooks(event_data: dict) -> None:
     """POST event payload to all active webhook URLs.
 
-    Intended to run as a background task AFTER the transaction has committed.
+    Creates its own DB session so it is safe to run as a BackgroundTask
+    after the request-scoped session has been closed.
     Dispatches concurrently with a 5s per-webhook timeout.
     """
-    stmt = select(Webhook).where(Webhook.active.is_(True))
-    result = await db.execute(stmt)
-    webhooks = result.scalars().all()
+    async with async_session_factory() as db:
+        stmt = select(Webhook).where(Webhook.active.is_(True))
+        result = await db.execute(stmt)
+        webhooks = result.scalars().all()
 
     if not webhooks:
         return
-
-    event_data = {
-        "event_id": str(event.id),
-        "event_type": event.event_type,
-        "event_version": event.event_version,
-        "timestamp": event.timestamp.isoformat(),
-        "incident_id": str(event.incident_id),
-        "data": event.payload,
-    }
 
     async with httpx.AsyncClient(timeout=5.0) as client:
 
@@ -58,8 +51,8 @@ async def dispatch_webhooks(db: AsyncSession, event: Event) -> None:
                 await client.post(url, json=event_data)
             except httpx.HTTPError:
                 logger.warning(
-                    "Webhook delivery failed for %s to %s",
-                    event.id,
+                    "Webhook delivery failed for event %s to %s",
+                    event_data.get("event_id"),
                     url,
                     exc_info=True,
                 )
