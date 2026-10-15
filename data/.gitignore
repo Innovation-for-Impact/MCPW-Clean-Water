@@ -1,0 +1,4 @@
+# WS3: Raw and prepared GIS data files are large and not committed.
+# Download sources documented in scripts/inventory.md.
+raw/
+prepared/

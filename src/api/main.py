@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import auth, events, health, incidents, lookup, webhooks
+from src.api.routes import auth, events, health, incidents, layers, lookup, webhooks
 
 app = FastAPI(
     title="MCPW Clean Water API",
@@ -26,3 +26,4 @@ app.include_router(lookup.router, tags=["Lookup"])
 app.include_router(incidents.router, tags=["Incidents"])
 app.include_router(events.router, tags=["Events"])
 app.include_router(webhooks.router, tags=["Webhooks"])
+app.include_router(layers.router, tags=["Layers"])
