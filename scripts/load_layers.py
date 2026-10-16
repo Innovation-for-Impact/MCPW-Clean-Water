@@ -30,13 +30,26 @@ LAYER_MAP = {
 }
 
 
+BATCH_SIZE = 500
+
+
 async def load_geojson(session: AsyncSession, filepath: Path, layer: str):
     """Load a single GeoJSON file into the jurisdictions table."""
     with open(filepath) as f:
         data = json.load(f)
 
     features = data.get("features", [])
+    batch: list[dict] = []
     count = 0
+
+    upsert_sql = text("""
+        INSERT INTO jurisdictions (layer, jurisdiction_id, name, geometry)
+        VALUES (:layer, :jurisdiction_id, :name, ST_GeogFromText(ST_AsText(ST_GeomFromGeoJSON(:geom))))
+        ON CONFLICT (jurisdiction_id) DO UPDATE SET
+            name = EXCLUDED.name,
+            geometry = EXCLUDED.geometry
+    """)
+
     for feature in features:
         props = feature.get("properties", {})
         geom = json.dumps(feature.get("geometry", {}))
@@ -47,22 +60,25 @@ async def load_geojson(session: AsyncSession, filepath: Path, layer: str):
             print(f"  SKIP: feature missing jurisdiction_id in {filepath.name}")
             continue
 
-        await session.execute(
-            text("""
-                INSERT INTO jurisdictions (layer, jurisdiction_id, name, geometry)
-                VALUES (:layer, :jurisdiction_id, :name, ST_GeogFromText(ST_AsText(ST_GeomFromGeoJSON(:geom))))
-                ON CONFLICT (jurisdiction_id) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    geometry = EXCLUDED.geometry
-            """),
-            {
-                "layer": layer,
-                "jurisdiction_id": jurisdiction_id,
-                "name": name,
-                "geom": geom,
-            },
-        )
+        batch.append({
+            "layer": layer,
+            "jurisdiction_id": jurisdiction_id,
+            "name": name,
+            "geom": geom,
+        })
         count += 1
+
+        if len(batch) >= BATCH_SIZE:
+            for params in batch:
+                await session.execute(upsert_sql, params)
+            await session.flush()
+            batch.clear()
+
+    # Flush remaining
+    if batch:
+        for params in batch:
+            await session.execute(upsert_sql, params)
+        await session.flush()
 
     print(f"  Loaded {count} features from {filepath.name} as layer '{layer}'")
     return count

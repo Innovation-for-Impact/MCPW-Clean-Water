@@ -32,11 +32,29 @@ MACOMB_BBOX = {
 }
 
 
+BATCH_SIZE = 500
+
+UPSERT_WATERWAY_SQL = text("""
+    INSERT INTO waterways (name, nhd_comid, geometry)
+    VALUES (:name, :nhd_comid, ST_GeogFromText(ST_AsText(ST_GeomFromGeoJSON(:geom))))
+    ON CONFLICT (nhd_comid) DO UPDATE SET
+        name = EXCLUDED.name,
+        geometry = EXCLUDED.geometry
+""")
+
+
+async def _flush_batch(session: AsyncSession, batch: list[dict]):
+    for params in batch:
+        await session.execute(UPSERT_WATERWAY_SQL, params)
+    await session.flush()
+
+
 async def load_from_geojson(session: AsyncSession, filepath: Path) -> int:
     """Load waterway features from a GeoJSON file."""
     with open(filepath) as f:
         data = json.load(f)
 
+    batch: list[dict] = []
     count = 0
     for feature in data.get("features", []):
         props = feature.get("properties", {})
@@ -48,17 +66,15 @@ async def load_from_geojson(session: AsyncSession, filepath: Path) -> int:
         if comid is not None:
             comid = int(comid)
 
-        await session.execute(
-            text("""
-                INSERT INTO waterways (name, nhd_comid, geometry)
-                VALUES (:name, :nhd_comid, ST_GeogFromText(ST_AsText(ST_GeomFromGeoJSON(:geom))))
-                ON CONFLICT (nhd_comid) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    geometry = EXCLUDED.geometry
-            """),
-            {"name": name, "nhd_comid": comid, "geom": geom},
-        )
+        batch.append({"name": name, "nhd_comid": comid, "geom": geom})
         count += 1
+
+        if len(batch) >= BATCH_SIZE:
+            await _flush_batch(session, batch)
+            batch.clear()
+
+    if batch:
+        await _flush_batch(session, batch)
 
     return count
 
@@ -74,6 +90,7 @@ async def load_from_fiona(session: AsyncSession, gdb_path: Path, layer_name: str
         return 0
 
     count = 0
+    batch: list[dict] = []
     transformer = None
 
     with fiona.open(gdb_path, layer=layer_name) as src:
@@ -105,17 +122,15 @@ async def load_from_fiona(session: AsyncSession, gdb_path: Path, layer_name: str
             if comid is not None:
                 comid = int(comid)
 
-            await session.execute(
-                text("""
-                    INSERT INTO waterways (name, nhd_comid, geometry)
-                    VALUES (:name, :nhd_comid, ST_GeogFromText(ST_AsText(ST_GeomFromGeoJSON(:geom))))
-                    ON CONFLICT (nhd_comid) DO UPDATE SET
-                        name = EXCLUDED.name,
-                        geometry = EXCLUDED.geometry
-                """),
-                {"name": name, "nhd_comid": comid, "geom": geom_json},
-            )
+            batch.append({"name": name, "nhd_comid": comid, "geom": geom_json})
             count += 1
+
+            if len(batch) >= BATCH_SIZE:
+                await _flush_batch(session, batch)
+                batch.clear()
+
+    if batch:
+        await _flush_batch(session, batch)
 
     return count
 

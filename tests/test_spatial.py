@@ -197,9 +197,7 @@ class TestFullSpatialLookup:
     @pytest.mark.asyncio
     async def test_excluded_procedure_sanitary(self, db: AsyncSession):
         """Sanitary sewer conveyance should set excluded_procedure flag."""
-        # This would need a drain with conveyance_type='sanitary' in test data
-        # Placeholder for when such data exists
-        pass
+        pytest.skip("Needs a drain with conveyance_type='sanitary' in test data — seed when data arrives")
 
     @pytest.mark.asyncio
     async def test_all_16_cases_no_errors(self, db: AsyncSession, test_cases):

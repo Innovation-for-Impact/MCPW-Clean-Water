@@ -296,14 +296,17 @@ async def _trace_nhd_downstream(
         text("""
             WITH RECURSIVE downstream AS (
                 SELECT id, name, nhd_comid, downstream_comid,
-                       has_beach_downstream, has_intake_downstream, 1 AS depth
+                       has_beach_downstream, has_intake_downstream,
+                       1 AS depth, ARRAY[nhd_comid] AS visited
                 FROM waterways WHERE nhd_comid = :start_comid
                 UNION ALL
                 SELECT w.id, w.name, w.nhd_comid, w.downstream_comid,
-                       w.has_beach_downstream, w.has_intake_downstream, d.depth + 1
+                       w.has_beach_downstream, w.has_intake_downstream,
+                       d.depth + 1, d.visited || w.nhd_comid
                 FROM waterways w
                 JOIN downstream d ON w.nhd_comid = d.downstream_comid
                 WHERE d.depth < :max_depth
+                  AND w.nhd_comid <> ALL(d.visited)
             )
             SELECT DISTINCT name, nhd_comid, has_beach_downstream, has_intake_downstream
             FROM downstream

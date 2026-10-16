@@ -8,7 +8,7 @@ jurisdictions to lookup results.
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,30 +30,42 @@ VALID_LAYERS = {
 MAX_FEATURES = 500
 
 
+@router.get("/")
+async def list_layers(
+    _user: User = Depends(RequireRole("viewer", "responder", "admin")),
+):
+    """List available jurisdiction layers."""
+    return {"layers": sorted(VALID_LAYERS)}
+
+
 @router.get("/{layer_name}")
 async def get_layer(
     layer_name: str,
-    limit: int = MAX_FEATURES,
-    offset: int = 0,
+    limit: int = Query(default=MAX_FEATURES, ge=1, le=MAX_FEATURES),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     _user: User = Depends(RequireRole("viewer", "responder", "admin")),
 ):
     """Return a GeoJSON FeatureCollection for a jurisdiction layer.
 
     Supports pagination via `limit` (default 500) and `offset` query params.
+    Response includes `total_count` for client-side pagination.
     """
     if layer_name not in VALID_LAYERS:
         raise HTTPException(status_code=404, detail=f"Unknown layer: {layer_name}")
 
-    if limit > MAX_FEATURES:
-        limit = MAX_FEATURES
+    count_result = await db.execute(
+        text("SELECT COUNT(*) FROM jurisdictions WHERE layer = :layer"),
+        {"layer": layer_name},
+    )
+    total_count = count_result.scalar()
 
     result = await db.execute(
         text("""
             SELECT
                 jurisdiction_id,
                 name,
-                ST_AsGeoJSON(ST_Simplify(geometry::geometry, 0.0001)) AS geojson
+                ST_AsGeoJSON(ST_SimplifyPreserveTopology(geometry::geometry, 0.0001)) AS geojson
             FROM jurisdictions
             WHERE layer = :layer
             ORDER BY name
@@ -77,12 +89,5 @@ async def get_layer(
     return {
         "type": "FeatureCollection",
         "features": features,
+        "total_count": total_count,
     }
-
-
-@router.get("/")
-async def list_layers(
-    _user: User = Depends(RequireRole("viewer", "responder", "admin")),
-):
-    """List available jurisdiction layers."""
-    return {"layers": sorted(VALID_LAYERS)}

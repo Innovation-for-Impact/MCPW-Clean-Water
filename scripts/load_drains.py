@@ -54,11 +54,24 @@ async def seed_known_drains(session: AsyncSession):
     print(f"  Seeded {len(KNOWN_DRAINS)} known drains (Tier 1/2 baseline)")
 
 
+BATCH_SIZE = 500
+
+
 async def load_drain_segments_from_geojson(session: AsyncSession, filepath: Path) -> int:
     """Load drain segments from a GeoJSON file with drain attributes."""
     with open(filepath) as f:
         data = json.load(f)
 
+    upsert_sql = text("""
+        INSERT INTO drain_segments (drain_id, segment_id, conveyance_type, downstream_segment_id, outlet_nhd_comid, geometry)
+        VALUES (:drain_id, :segment_id, :conveyance_type, :downstream_segment_id, :outlet_nhd_comid,
+                ST_GeogFromText(ST_AsText(ST_GeomFromGeoJSON(:geom))))
+        ON CONFLICT (segment_id) DO UPDATE SET
+            conveyance_type = EXCLUDED.conveyance_type,
+            geometry = EXCLUDED.geometry
+    """)
+
+    batch: list[dict] = []
     count = 0
     for feature in data.get("features", []):
         props = feature.get("properties", {})
@@ -71,25 +84,26 @@ async def load_drain_segments_from_geojson(session: AsyncSession, filepath: Path
         if not drain_id or not segment_id:
             continue
 
-        await session.execute(
-            text("""
-                INSERT INTO drain_segments (drain_id, segment_id, conveyance_type, downstream_segment_id, outlet_nhd_comid, geometry)
-                VALUES (:drain_id, :segment_id, :conveyance_type, :downstream_segment_id, :outlet_nhd_comid,
-                        ST_GeogFromText(ST_AsText(ST_GeomFromGeoJSON(:geom))))
-                ON CONFLICT (segment_id) DO UPDATE SET
-                    conveyance_type = EXCLUDED.conveyance_type,
-                    geometry = EXCLUDED.geometry
-            """),
-            {
-                "drain_id": drain_id,
-                "segment_id": segment_id,
-                "conveyance_type": conveyance_type,
-                "downstream_segment_id": props.get("downstream_segment_id"),
-                "outlet_nhd_comid": props.get("outlet_nhd_comid"),
-                "geom": geom,
-            },
-        )
+        batch.append({
+            "drain_id": drain_id,
+            "segment_id": segment_id,
+            "conveyance_type": conveyance_type,
+            "downstream_segment_id": props.get("downstream_segment_id"),
+            "outlet_nhd_comid": props.get("outlet_nhd_comid"),
+            "geom": geom,
+        })
         count += 1
+
+        if len(batch) >= BATCH_SIZE:
+            for params in batch:
+                await session.execute(upsert_sql, params)
+            await session.flush()
+            batch.clear()
+
+    if batch:
+        for params in batch:
+            await session.execute(upsert_sql, params)
+        await session.flush()
 
     return count
 
