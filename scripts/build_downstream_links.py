@@ -36,8 +36,17 @@ KNOWN_INTAKES: list[str] = [
 ]
 
 
+BATCH_SIZE = 500
+
+
 async def load_plusflow_csv(session: AsyncSession, csv_path: Path) -> int:
     """Parse NHDPlus PlusFlow table and update downstream_comid links."""
+    update_sql = text("""
+        UPDATE waterways SET downstream_comid = :to_comid
+        WHERE nhd_comid = :from_comid AND downstream_comid IS NULL
+    """)
+
+    batch: list[dict] = []
     count = 0
     with open(csv_path) as f:
         reader = csv.DictReader(f)
@@ -48,15 +57,17 @@ async def load_plusflow_csv(session: AsyncSession, csv_path: Path) -> int:
             if from_comid == 0 or to_comid == 0:
                 continue
 
-            result = await session.execute(
-                text("""
-                    UPDATE waterways SET downstream_comid = :to_comid
-                    WHERE nhd_comid = :from_comid AND downstream_comid IS NULL
-                """),
-                {"from_comid": from_comid, "to_comid": to_comid},
-            )
-            if result.rowcount > 0:
-                count += 1
+            batch.append({"from_comid": from_comid, "to_comid": to_comid})
+            count += 1
+
+            if len(batch) >= BATCH_SIZE:
+                await session.execute(update_sql, batch)
+                await session.flush()
+                batch.clear()
+
+    if batch:
+        await session.execute(update_sql, batch)
+        await session.flush()
 
     return count
 
@@ -83,15 +94,17 @@ async def flag_beaches_and_intakes(session: AsyncSession):
 
     # Propagate flags upstream via downstream_comid links
     # Segments upstream of a flagged segment should also be flagged
+    # Depth limit prevents infinite recursion from cycles in NHD data
     await session.execute(
         text("""
             WITH RECURSIVE upstream AS (
-                SELECT nhd_comid FROM waterways WHERE has_beach_downstream = true
+                SELECT nhd_comid, 1 AS depth FROM waterways WHERE has_beach_downstream = true
                 UNION
-                SELECT w.nhd_comid
+                SELECT w.nhd_comid, u.depth + 1
                 FROM waterways w
                 JOIN upstream u ON w.downstream_comid = u.nhd_comid
                 WHERE w.has_beach_downstream = false
+                  AND u.depth < 500
             )
             UPDATE waterways SET has_beach_downstream = true
             WHERE nhd_comid IN (SELECT nhd_comid FROM upstream)
@@ -100,12 +113,13 @@ async def flag_beaches_and_intakes(session: AsyncSession):
     await session.execute(
         text("""
             WITH RECURSIVE upstream AS (
-                SELECT nhd_comid FROM waterways WHERE has_intake_downstream = true
+                SELECT nhd_comid, 1 AS depth FROM waterways WHERE has_intake_downstream = true
                 UNION
-                SELECT w.nhd_comid
+                SELECT w.nhd_comid, u.depth + 1
                 FROM waterways w
                 JOIN upstream u ON w.downstream_comid = u.nhd_comid
                 WHERE w.has_intake_downstream = false
+                  AND u.depth < 500
             )
             UPDATE waterways SET has_intake_downstream = true
             WHERE nhd_comid IN (SELECT nhd_comid FROM upstream)

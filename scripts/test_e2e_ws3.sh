@@ -28,13 +28,16 @@ echo " WS3 — Layers & Spatial Lookup E2E Tests"
 echo "============================================"
 
 # ── Auth setup ────────────────────────────────
+ADMIN_PASS="${TEST_ADMIN_PASS:-admin123}"
+RESP_PASS="${TEST_RESPONDER_PASS:-responder123}"
+
 ADMIN_TOKEN=$(curl -s -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' | json_field access_token)
+  -d "{\"username\":\"admin\",\"password\":\"$ADMIN_PASS\"}" | json_field access_token)
 
 RESP_TOKEN=$(curl -s -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"responder","password":"responder123"}' | json_field access_token)
+  -d "{\"username\":\"responder\",\"password\":\"$RESP_PASS\"}" | json_field access_token)
 
 if [ -z "$ADMIN_TOKEN" ] || [ -z "$RESP_TOKEN" ]; then
   echo "FATAL: Could not obtain auth tokens"

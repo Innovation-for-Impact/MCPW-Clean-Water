@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.schemas.contact import Contact
 from src.schemas.enums import MaterialType
@@ -10,7 +10,7 @@ class LookupRequest(BaseModel):
     location: Location
     material: MaterialType
     quantity_gallons: float | None = None
-    buffer_radius_m: float | None = None
+    buffer_radius_m: float | None = Field(default=None, gt=0, le=10000)
 
 
 class DrainInfo(BaseModel):

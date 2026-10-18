@@ -6,13 +6,12 @@ All spatial queries use PostGIS functions on EPSG:4326 geography columns.
 
 from dataclasses import dataclass, field
 
-from geoalchemy2.functions import ST_DWithin, ST_Distance, ST_MakePoint, ST_SetSRID
+from geoalchemy2.functions import ST_DWithin, ST_MakePoint, ST_SetSRID
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.drain import Drain, DrainSegment, ResponseSite
+from src.models.drain import Drain, ResponseSite
 from src.models.jurisdiction import Jurisdiction
-from src.models.waterway import Waterway
 
 
 # ---------- Result types ----------
@@ -118,8 +117,6 @@ async def find_nearest_drain(
     Returns drain metadata including tier, conveyance owner, and conveyance type.
     Returns None if no drain segment is within range.
     """
-    point = ST_SetSRID(ST_MakePoint(lon, lat), 4326)
-
     stmt = text("""
         SELECT
             d.drain_id,
@@ -253,16 +250,44 @@ async def _trace_drain_to_outlet(
         if seg.outlet_nhd_comid:
             outlet_comid = seg.outlet_nhd_comid
 
-    # Find nearest downstream response site (plan preferred over computed)
-    # Check starting drain first, then the first major drain downstream
+    # Find the nearest downstream response site (plan sites preferred).
+    # We use the traced segment IDs to identify which response sites are
+    # at or downstream of the spill entry point — only sites on segments
+    # we actually traversed are valid candidates.
+    downstream_seg_ids = [seg.segment_id for seg in segments]
+
     search_drain_ids = [drain_id]
     if first_major:
         search_drain_ids.append(first_major["drain_id"])
 
     for search_id in search_drain_ids:
+        if downstream_seg_ids and search_id == drain_id:
+            # For the entry drain, pick the closest response site that is
+            # spatially on or near a downstream segment (by site_order).
+            # Find the minimum site_order among sites whose drain segments
+            # appear in our downstream trace.
+            min_order_result = await db.execute(
+                text("""
+                    SELECT MIN(rs.site_order) AS min_order
+                    FROM response_sites rs
+                    JOIN drain_segments ds ON ds.drain_id = rs.drain_id
+                    WHERE rs.drain_id = :drain_id
+                      AND ds.segment_id = ANY(:seg_ids)
+                      AND ST_DWithin(rs.geometry, ds.geometry, 50)
+                """),
+                {"drain_id": search_id, "seg_ids": downstream_seg_ids},
+            )
+            min_order_row = min_order_result.first()
+            min_order = min_order_row.min_order if min_order_row and min_order_row.min_order is not None else 0
+        else:
+            min_order = 0
+
         site_result = await db.execute(
             select(ResponseSite)
-            .where(ResponseSite.drain_id == search_id)
+            .where(
+                ResponseSite.drain_id == search_id,
+                ResponseSite.site_order >= min_order,
+            )
             .order_by(
                 # Prefer plan sites over computed
                 text("CASE WHEN source = 'plan' THEN 0 ELSE 1 END"),
@@ -308,9 +333,11 @@ async def _trace_nhd_downstream(
                 WHERE d.depth < :max_depth
                   AND w.nhd_comid <> ALL(d.visited)
             )
-            SELECT DISTINCT name, nhd_comid, has_beach_downstream, has_intake_downstream
+            SELECT name, nhd_comid, has_beach_downstream, has_intake_downstream,
+                   MIN(depth) AS min_depth
             FROM downstream
-            ORDER BY nhd_comid
+            GROUP BY name, nhd_comid, has_beach_downstream, has_intake_downstream
+            ORDER BY min_depth
         """),
         {"start_comid": start_comid, "max_depth": MAX_TRACE_DEPTH},
     )

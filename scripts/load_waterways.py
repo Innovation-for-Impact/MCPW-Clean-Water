@@ -44,8 +44,7 @@ UPSERT_WATERWAY_SQL = text("""
 
 
 async def _flush_batch(session: AsyncSession, batch: list[dict]):
-    for params in batch:
-        await session.execute(UPSERT_WATERWAY_SQL, params)
+    await session.execute(UPSERT_WATERWAY_SQL, batch)
     await session.flush()
 
 
@@ -65,6 +64,8 @@ async def load_from_geojson(session: AsyncSession, filepath: Path) -> int:
 
         if comid is not None:
             comid = int(comid)
+        else:
+            continue  # Skip features without a COMID — can't upsert on NULL unique key
 
         batch.append({"name": name, "nhd_comid": comid, "geom": geom})
         count += 1
@@ -121,6 +122,8 @@ async def load_from_fiona(session: AsyncSession, gdb_path: Path, layer_name: str
             comid = props.get("NHDPlusID") or props.get("COMID")
             if comid is not None:
                 comid = int(comid)
+            else:
+                continue  # Skip features without a COMID — can't upsert on NULL unique key
 
             batch.append({"name": name, "nhd_comid": comid, "geom": geom_json})
             count += 1

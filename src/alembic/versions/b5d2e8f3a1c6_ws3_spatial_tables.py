@@ -29,7 +29,7 @@ def upgrade() -> None:
         'waterways',
         sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column('name', sa.String(255), nullable=True),
-        sa.Column('nhd_comid', sa.BigInteger(), unique=True, nullable=True),
+        sa.Column('nhd_comid', sa.BigInteger(), unique=True, nullable=False),
         sa.Column('flow_direction', sa.String(10), nullable=True),
         sa.Column('downstream_comid', sa.BigInteger(), nullable=True, index=True),
         sa.Column('geometry', geoalchemy2.types.Geography(

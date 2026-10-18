@@ -36,6 +36,11 @@ async def run_lookup(db: AsyncSession, request: LookupRequest) -> LookupResult:
     jurisdiction_ids = [j.jurisdiction_id for j in jurisdictions]
 
     # WS4: rules engine — find contacts based on jurisdictions + material + size
+    # NOTE: Rule model has drain_tier, drain_id, conveyance_owner, conveyance_type,
+    # hazard_class, after_hours, immediate_threat columns. Filtering on these
+    # drain-context fields is deferred to WS4 implementation. Until then, rules
+    # with non-NULL drain-context values will only match if their other predicates
+    # (jurisdiction_type, material, size_threshold) match.
     response_contacts: list[Contact] = []
     regulatory_contacts: list[Contact] = []
 

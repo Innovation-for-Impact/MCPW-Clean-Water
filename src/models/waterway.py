@@ -10,7 +10,7 @@ class Waterway(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    nhd_comid: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True)
+    nhd_comid: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     flow_direction: Mapped[str | None] = mapped_column(String(10), nullable=True)
     downstream_comid: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     geometry: Mapped[str] = mapped_column(

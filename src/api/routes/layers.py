@@ -83,7 +83,7 @@ async def get_layer(
                 "jurisdiction_id": row.jurisdiction_id,
                 "name": row.name,
             },
-            "geometry": json.loads(row.geojson),
+            "geometry": json.loads(row.geojson) if row.geojson else None,
         })
 
     return {

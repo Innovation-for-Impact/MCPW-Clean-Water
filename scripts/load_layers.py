@@ -69,15 +69,13 @@ async def load_geojson(session: AsyncSession, filepath: Path, layer: str):
         count += 1
 
         if len(batch) >= BATCH_SIZE:
-            for params in batch:
-                await session.execute(upsert_sql, params)
+            await session.execute(upsert_sql, batch)
             await session.flush()
             batch.clear()
 
     # Flush remaining
     if batch:
-        for params in batch:
-            await session.execute(upsert_sql, params)
+        await session.execute(upsert_sql, batch)
         await session.flush()
 
     print(f"  Loaded {count} features from {filepath.name} as layer '{layer}'")

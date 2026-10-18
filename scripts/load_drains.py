@@ -95,14 +95,12 @@ async def load_drain_segments_from_geojson(session: AsyncSession, filepath: Path
         count += 1
 
         if len(batch) >= BATCH_SIZE:
-            for params in batch:
-                await session.execute(upsert_sql, params)
+            await session.execute(upsert_sql, batch)
             await session.flush()
             batch.clear()
 
     if batch:
-        for params in batch:
-            await session.execute(upsert_sql, params)
+        await session.execute(upsert_sql, batch)
         await session.flush()
 
     return count
