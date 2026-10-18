@@ -124,38 +124,37 @@ Six workstreams, one owner each. WS3 and WS4 are the critical path: the results 
 
 ### WS3 — Jurisdiction layers & spatial query
 
-**Goal:** For any point in Macomb County, return every jurisdiction and water body the spill affects.
+**Goal:** For any point in Macomb County, return every jurisdiction and water body the spill affects, plus the county drain, tier, conveyance owner, and downstream path.
 
-**Done when:** The lookup returns the correct municipality, drain district, subwatershed, receiving water, and downstream path for every boundary test case.
+**Done when:** The lookup returns the correct municipality, drain district, drain and drain tier, conveyance owner, subwatershed, receiving water, first large drain downstream, and downstream path for every boundary test case.
 
-- [ ] **Inventory data sources**
-  - Make a table: layer, source URL, format, last updated, owner
-  - Check Macomb County GIS open data first, then Michigan GIS Open Data, then USGS (NHD for water, WBD for watersheds)
-- [ ] **Collect the layers**
-  - Municipal boundaries (cities, townships, villages)
-  - County drain districts
-  - Clinton River subwatersheds (HUC-12)
-  - Water bodies and stream flowlines (NHD)
-  - Storm sewer outfalls, if Public Works shares them
-  - Lake St. Clair shoreline and the USCG/EPA response zone line
-- [ ] **Load into PostGIS**
-  - Reproject everything to one coordinate system (EPSG:4326)
-  - Give each feature a stable jurisdiction ID that WS4 will reference
-  - Add spatial indexes so lookups stay fast
-- [ ] **Write the lookup query**
-  - Intersect the pin (or buffer) with each boundary layer (`ST_Intersects`)
-  - Return a list of {layer, jurisdiction ID, name}
-- [ ] **Snap to water and trace downstream**
-  - Find the nearest water feature to the pin
-  - Follow NHD flowlines downstream (drain → Clinton River → Lake St. Clair) and list each water body passed
-  - Flag downstream beaches and drinking-water intakes
-- [ ] **Share layers with the map**
-  - Publish layers for WS1 as ArcGIS feature layers or vector tiles
-- [ ] **Write boundary tests**
-  - At least 10 points: on municipal lines, drain district edges, the shoreline, and the Oakland/St. Clair county lines
-  - Record the expected result for each
+- [x] **Inventory data sources**
+  - Data source inventory table in `scripts/inventory.md`
+  - Check sources script: `scripts/check_sources.py`
+- [x] **Collect the layers**
+  - Municipal boundaries, county drain districts, subwatersheds, water bodies, NHDPlus flowlines, shoreline
+  - Storm sewer outfalls — request sent to Public Works, pending
+- [x] **Load into PostGIS**
+  - All layers reprojected to EPSG:4326; stable jurisdiction IDs assigned
+  - Spatial indexes on all geometry columns (GiST)
+  - ETL scripts: `load_layers.py`, `load_waterways.py`, `load_drains.py` (executemany batched inserts)
+  - Input validation: lat/lon range constraints, buffer_radius_m capped at 10km
+- [x] **Write the lookup query**
+  - `lookup_jurisdictions()` using `ST_DWithin` with parameterized queries
+  - `find_nearest_drain()` and `find_nearest_water()` with snap distance
+- [x] **Snap to water and trace downstream**
+  - Drain segment trace with cycle detection (visited arrays) and depth limit (100)
+  - NHD flowline trace ordered by downstream depth
+  - Flags: beach_downstream, intake_downstream, outside_county, excluded_procedure
+  - Response site selection uses spatial proximity to downstream segments
+- [x] **Share layers with the map**
+  - `GET /layers/` and `GET /layers/{layer_name}` endpoints serve GeoJSON with pagination and topology-preserving simplification
+- [x] **Write boundary tests**
+  - 16 test cases in `tests/boundary-test-cases.json`; automated in `tests/test_spatial.py`
+  - Performance benchmarks in `tests/test_performance.py`
+  - E2E test script: `scripts/test_e2e_ws3.sh` (23 assertions)
 
-**Hands off to:** WS4 and WS5 (jurisdiction IDs + downstream path), WS1 (layers).
+**Hands off to:** WS4 and WS5 (jurisdiction IDs + drain context + downstream path), WS1 (layers).
 
 ### WS4 — Contacts directory & rules engine
 
@@ -205,6 +204,8 @@ Six workstreams, one owner each. WS3 and WS4 are the critical path: the results 
   - `POST /auth/login`: JWT authentication
   - `POST /auth/register`: admin-only user registration
   - `POST/GET/DELETE /webhooks`: admin-only webhook management
+  - `GET /layers/`: list available jurisdiction layers (WS3)
+  - `GET /layers/{layer_name}`: GeoJSON FeatureCollection with pagination (WS3)
   - `GET /health`: status check for hosting
 - [x] **Event publishing & integration hooks**
   - On incident creation, publish a versioned incident event to the events table (JSONB)

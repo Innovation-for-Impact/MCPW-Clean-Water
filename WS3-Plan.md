@@ -95,7 +95,7 @@ The lookup returns the correct municipality, drain district, drain and drain tie
   CREATE TABLE waterways (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255),
-      nhd_comid BIGINT UNIQUE,            -- NHD Common Identifier
+      nhd_comid BIGINT UNIQUE NOT NULL,   -- NHD Common Identifier (features without a COMID are skipped in ETL)
       flow_direction VARCHAR(10),          -- downstream direction
       downstream_comid BIGINT,             -- next segment downstream
       geometry GEOMETRY(LineString, 4326) NOT NULL,
@@ -203,20 +203,29 @@ The lookup returns the correct municipality, drain district, drain and drain tie
   - Walk the drain network first: follow `drain_segments.downstream_segment_id` to the outlet, then continue on NHD from `outlet_nhd_comid`
   - Record the first Tier 1/2 drain reached (`first_major_drain_downstream`) and the distance to it
   - Record `next_intercept_point`: the nearest downstream `response_sites` row on that drain (`plan` sites first, else `computed`)
-  - NHD portion — recursive query following `downstream_comid` links:
+  - NHD portion — recursive query following `downstream_comid` links with cycle detection and depth limit:
     ```sql
     WITH RECURSIVE downstream AS (
-        SELECT id, name, nhd_comid, downstream_comid, has_beach_downstream, has_intake_downstream
+        SELECT id, name, nhd_comid, downstream_comid,
+               has_beach_downstream, has_intake_downstream,
+               1 AS depth, ARRAY[nhd_comid] AS visited
         FROM waterways WHERE nhd_comid = :start_comid
         UNION ALL
-        SELECT w.id, w.name, w.nhd_comid, w.downstream_comid, w.has_beach_downstream, w.has_intake_downstream
+        SELECT w.id, w.name, w.nhd_comid, w.downstream_comid,
+               w.has_beach_downstream, w.has_intake_downstream,
+               d.depth + 1, d.visited || w.nhd_comid
         FROM waterways w
         JOIN downstream d ON w.nhd_comid = d.downstream_comid
+        WHERE d.depth < :max_depth
+          AND w.nhd_comid <> ALL(d.visited)
     )
-    SELECT DISTINCT name, nhd_comid, has_beach_downstream, has_intake_downstream
-    FROM downstream;
+    SELECT name, nhd_comid, has_beach_downstream, has_intake_downstream,
+           MIN(depth) AS min_depth
+    FROM downstream
+    GROUP BY name, nhd_comid, has_beach_downstream, has_intake_downstream
+    ORDER BY min_depth;
     ```
-  - Return ordered list of water body names from spill point to Lake St. Clair
+  - Return ordered list of water body names from spill point to Lake St. Clair (ordered by downstream depth, not COMID)
   - Flag if any downstream segment has a beach or drinking-water intake
 
 - [x] Build the downstream connectivity data (`scripts/build_downstream_links.py`)
@@ -347,7 +356,10 @@ Red Run is one drain getting pre-planned response infrastructure; most drains ha
 | --- | --- |
 | Coordinate system | EPSG:4326 (WGS 84) for all stored geometries |
 | Jurisdiction ID format | `{layer_code}_{unique_id}` — stable across data refreshes |
-| Downstream tracing | Walk drain segments first, then NHDPlus flow table from the drain outlet; limited to 100 segments total |
+| Downstream tracing | Walk drain segments first, then NHDPlus flow table from the drain outlet; limited to 100 segments total; cycle detection via visited arrays |
+| Input validation | Lat/lon constrained to valid ranges (-90..90, -180..180); buffer_radius_m capped at 10km; Pydantic Field validators on LookupRequest |
+| ETL batching | All ETL scripts use executemany (pass list of dicts to session.execute) for batch performance |
+| nhd_comid | NOT NULL on waterways table; features without a COMID are skipped during ETL (can't upsert on NULL unique key) |
 | Drain tiers | 1 = large drain with response plan; 2 = large/intercounty, no plan; 3 = other county drain; 4 = not a county asset. Tier list confirmed by MCPWO |
 | Response plans | Stored as a `response_sites` overlay; drains without a plan get computed road-crossing sites |
 | Geometry type (resolved) | Kept `Geography(GEOMETRY)` in jurisdictions (supports mixed types); drain_segments and waterways use `Geography(LINESTRING)`, response_sites use `Geography(POINT)` |
