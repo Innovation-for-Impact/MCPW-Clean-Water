@@ -25,7 +25,7 @@ A web application for reporting water spills in Macomb County, MI. A reporter en
 | --- | --- | --- |
 | WS1 | Map & Geotagging UI | Map with search, click-to-pin, and impact buffer |
 | WS2 | Incident Intake & Parsing | Structured form + free-text parser → validated incident → event output for dashboard & Accela integration |
-| WS3 | Jurisdiction Layers & Spatial Query | Point/buffer → list of jurisdictions + downstream path |
+| WS3 | Jurisdiction Layers & Spatial Query | Point/buffer → jurisdictions + drain snap + downstream path + GeoJSON layers — **Phases 1–3 complete** |
 | WS4 | Contacts Directory & Rules Engine | Jurisdictions + material + size → contacts with deadlines |
 | WS5 | Backend API & Data Model | REST API (10 endpoints), DB, JWT auth, RBAC, audit trail, webhooks — **Phases 1–3 complete** |
 | WS6 | Results UI, QA & Deployment | Response/Regulatory panels, end-to-end tests, hosting |
@@ -41,6 +41,8 @@ A web application for reporting water spills in Macomb County, MI. A reporter en
 | `POST` | `/incidents` | Responder+ | Save incident, emit event |
 | `GET` | `/incidents/{id}` | Viewer+ | Fetch saved incident |
 | `GET` | `/events` | Viewer+ | Poll incident events (dashboard, Accela) |
+| `GET` | `/layers/` | Viewer+ | List available jurisdiction layers |
+| `GET` | `/layers/{name}` | Viewer+ | GeoJSON FeatureCollection for a layer (paginated) |
 | `POST` | `/webhooks` | Admin | Register a webhook URL |
 | `GET` | `/webhooks` | Admin | List registered webhooks |
 | `DELETE` | `/webhooks/{id}` | Admin | Remove a webhook |
@@ -69,6 +71,7 @@ docker compose exec api python -m scripts.seed_users
 
 # 5. Run E2E tests
 ./scripts/test_e2e.sh
+./scripts/test_e2e_ws3.sh   # WS3 layers & spatial lookup tests
 ```
 
 API is available at `http://localhost:8000`. Interactive docs at `/docs` (Swagger) and `/redoc`.
