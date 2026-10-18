@@ -1,0 +1,192 @@
+{
+  "description": "WS3 boundary test cases — 16 points covering jurisdiction lookup, drain snapping, and downstream tracing across Macomb County.",
+  "test_cases": [
+    {
+      "id": 1,
+      "description": "Downtown Mount Clemens (Clinton River)",
+      "lat": 42.5973,
+      "lon": -82.8779,
+      "expected": {
+        "jurisdictions": ["muni_mount_clemens"],
+        "drain": null,
+        "downstream_path": ["Clinton River", "Lake St. Clair"],
+        "flags": {"outside_county": false}
+      }
+    },
+    {
+      "id": 2,
+      "description": "Sterling Heights near Red Run Drain",
+      "lat": 42.5803,
+      "lon": -83.0302,
+      "expected": {
+        "jurisdictions": ["muni_sterling_heights"],
+        "drain": {"drain_id": "drain_red_run", "tier": "1"},
+        "downstream_path": ["Red Run Drain", "Clinton River", "Lake St. Clair"],
+        "flags": {"outside_county": false}
+      }
+    },
+    {
+      "id": 3,
+      "description": "Lake St. Clair shoreline (Harrison Twp)",
+      "lat": 42.5960,
+      "lon": -82.8100,
+      "expected": {
+        "jurisdictions": ["muni_harrison_twp"],
+        "drain": null,
+        "downstream_path": ["Lake St. Clair"],
+        "flags": {"outside_county": false}
+      }
+    },
+    {
+      "id": 4,
+      "description": "Municipal boundary line (two cities) — Warren/Sterling Heights border near Mound Rd",
+      "lat": 42.5580,
+      "lon": -83.0300,
+      "expected": {
+        "jurisdictions_contains_both": ["muni_warren", "muni_sterling_heights"],
+        "flags": {"outside_county": false}
+      },
+      "notes": "Point exactly on boundary should return both municipalities"
+    },
+    {
+      "id": 5,
+      "description": "County line — Oakland/Macomb border (near Rochester Rd)",
+      "lat": 42.5400,
+      "lon": -83.1100,
+      "expected": {
+        "jurisdictions": [],
+        "flags": {"outside_county": true}
+      },
+      "notes": "Point is in Oakland County; should return empty with outside_county flag"
+    },
+    {
+      "id": 6,
+      "description": "County line — St. Clair/Macomb border (near 26 Mile Rd)",
+      "lat": 42.7300,
+      "lon": -82.8500,
+      "expected": {
+        "jurisdictions": [],
+        "flags": {"outside_county": true}
+      },
+      "notes": "Point is in St. Clair County; should return empty with outside_county flag"
+    },
+    {
+      "id": 7,
+      "description": "Drain district edge — Red Run Intercepting Drain District boundary",
+      "lat": 42.5500,
+      "lon": -83.0500,
+      "expected": {
+        "jurisdictions_contains": ["dd_red_run"],
+        "flags": {"outside_county": false}
+      }
+    },
+    {
+      "id": 8,
+      "description": "Storm sewer area — if storm sewer data available",
+      "lat": 42.5650,
+      "lon": -82.9500,
+      "expected": {
+        "jurisdictions_contains": [],
+        "flags": {"outside_county": false}
+      },
+      "notes": "Storm sewer data may not be available; test confirms graceful fallback"
+    },
+    {
+      "id": 9,
+      "description": "Point far from any waterway — interior of Clinton Twp residential area",
+      "lat": 42.5850,
+      "lon": -82.9200,
+      "expected": {
+        "jurisdictions_contains": ["muni_clinton_twp"],
+        "drain": null,
+        "nearest_water": null,
+        "downstream_path": [],
+        "flags": {"outside_county": false}
+      },
+      "notes": "No waterway within 500m; downstream_path should be empty"
+    },
+    {
+      "id": 10,
+      "description": "Point near potential drinking-water intake",
+      "lat": 42.5800,
+      "lon": -82.8200,
+      "expected": {
+        "flags": {"intake_downstream": true}
+      },
+      "notes": "Confirm intake locations with MCPWO before asserting"
+    },
+    {
+      "id": 11,
+      "description": "Bear Creek diesel spill (Oct 2018) — 24257 Mound Rd, Warren. Tier 2, enclosed.",
+      "lat": 42.5230,
+      "lon": -83.0300,
+      "expected": {
+        "jurisdictions_contains": ["muni_warren"],
+        "drain": {"drain_id": "drain_bear_creek", "tier": "2", "conveyance_type": "enclosed"},
+        "downstream_path": ["Bear Creek", "Red Run Drain", "Clinton River", "Lake St. Clair"],
+        "next_intercept_point": {"name": "Crossing 7 — Bear Creek Confluence", "source": "plan"}
+      },
+      "notes": "Real incident — geocode address for exact coordinates"
+    },
+    {
+      "id": 12,
+      "description": "Vermander Drain oil spill (Dec 2025) — 35350 Kelly Rd, Clinton Twp. Tier 3 via private ditch.",
+      "lat": 42.5850,
+      "lon": -82.9100,
+      "expected": {
+        "jurisdictions_contains": ["muni_clinton_twp"],
+        "drain": {"drain_id": "drain_vermander", "tier": "3"},
+        "downstream_path_note": "Confirm with MCPWO"
+      },
+      "notes": "Real incident — confirm drain details and downstream path with MCPWO"
+    },
+    {
+      "id": 13,
+      "description": "Red Run at Dequindre/Chicago (crossing 1/2) — Tier 1 on county + municipal lines",
+      "lat": 42.5140,
+      "lon": -83.0880,
+      "expected": {
+        "drain": {"drain_id": "drain_red_run", "tier": "1"},
+        "upstream_counties": ["Oakland"],
+        "downstream_path": ["Red Run Drain", "Clinton River", "Lake St. Clair"],
+        "flags": {"outside_county": false}
+      },
+      "notes": "Macomb side only; upstream_counties should include Oakland"
+    },
+    {
+      "id": 14,
+      "description": "Red Run at Utica Rd bridge (crossing 18) — Tier 1 outlet",
+      "lat": 42.5910,
+      "lon": -82.8900,
+      "expected": {
+        "drain": {"drain_id": "drain_red_run", "tier": "1"},
+        "downstream_path": ["Red Run Drain", "Clinton River", "Lake St. Clair"],
+        "next_intercept_point": {"name": "Crossing 18 — Utica Rd Bridge (outlet to Clinton River)"}
+      },
+      "notes": "No further planned crossings downstream"
+    },
+    {
+      "id": 15,
+      "description": "Plum Brook — Tier 2 drain (one of several Tier 2 spot checks)",
+      "lat": 42.5700,
+      "lon": -83.0000,
+      "expected": {
+        "drain": {"drain_id": "drain_plum_brook", "tier": "2"},
+        "downstream_path_contains": ["Red Run Drain", "Clinton River", "Lake St. Clair"],
+        "next_intercept_point": {"source": "computed"}
+      },
+      "notes": "Computed intercept point from road × drain intersection"
+    },
+    {
+      "id": 16,
+      "description": "Roads-dept storm sewer — Tier 4, not a county asset",
+      "lat": 42.5600,
+      "lon": -82.9600,
+      "expected": {
+        "drain": {"conveyance_owner": "roads_dept", "tier": "4"},
+        "downstream_path_note": "First county drain reached, if any"
+      },
+      "notes": "conveyance_owner = roads_dept; referral to roads department"
+    }
+  ]
+}
