@@ -64,26 +64,31 @@ async def create_incident(
             )
         )
 
-    # Store contact associations
+    # Store contact associations — batch lookup to avoid N+1
     all_contacts = lookup_result.response_contacts + lookup_result.regulatory_contacts
-    for c in all_contacts:
-        contact_row = (
-            await db.execute(
-                select(ContactModel).where(
-                    ContactModel.jurisdiction_id == c.jurisdiction_id,
-                    ContactModel.agency == c.agency,
-                )
+    if all_contacts:
+        contact_keys = [(c.jurisdiction_id, c.agency) for c in all_contacts]
+        from sqlalchemy import tuple_
+        contact_rows_result = await db.execute(
+            select(ContactModel).where(
+                tuple_(ContactModel.jurisdiction_id, ContactModel.agency).in_(contact_keys)
             )
-        ).scalar_one_or_none()
-        if contact_row:
-            db.add(
-                IncidentContact(
-                    incident_id=incident.id,
-                    contact_id=contact_row.id,
-                    role=c.role.value,
-                    deadline=c.reporting_deadline,
+        )
+        contact_rows_by_key = {
+            (cr.jurisdiction_id, cr.agency): cr
+            for cr in contact_rows_result.scalars().all()
+        }
+        for c in all_contacts:
+            contact_row = contact_rows_by_key.get((c.jurisdiction_id, c.agency))
+            if contact_row:
+                db.add(
+                    IncidentContact(
+                        incident_id=incident.id,
+                        contact_id=contact_row.id,
+                        role=c.role.value,
+                        deadline=c.reporting_deadline,
+                    )
                 )
-            )
 
     # Build event in the SAME transaction
     event_payload = {

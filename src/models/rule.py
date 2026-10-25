@@ -8,7 +8,7 @@ class Rule(Base):
     __tablename__ = "rules"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    jurisdiction_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    jurisdiction_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     water_body: Mapped[str | None] = mapped_column(String(50))
     material: Mapped[str | None] = mapped_column(String(50))
     size_threshold: Mapped[float | None] = mapped_column(Float)

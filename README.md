@@ -25,9 +25,9 @@ A web application for reporting water spills in Macomb County, MI. A reporter en
 | --- | --- | --- |
 | WS1 | Map & Geotagging UI | Map with search, click-to-pin, and impact buffer |
 | WS2 | Incident Intake & Parsing | Structured form + free-text parser → validated incident → event output for dashboard & Accela integration |
-| WS3 | Jurisdiction Layers & Spatial Query | Point/buffer → list of jurisdictions + downstream path |
-| WS4 | Contacts Directory & Rules Engine | Jurisdictions + material + size → contacts with deadlines |
-| WS5 | Backend API & Data Model | REST API (10 endpoints), DB, JWT auth, RBAC, audit trail, webhooks — **Phases 1–3 complete** |
+| WS3 | Jurisdiction Layers & Spatial Query | Point/buffer → list of jurisdictions + downstream path — **64 jurisdictions + 1,917 waterways loaded, 38/38 spatial tests passing, wired into /lookup** |
+| WS4 | Contacts Directory & Rules Engine | Jurisdictions + material + size → contacts with deadlines — **CRUD routes, Pydantic schemas, seed scripts, rules engine wired into /lookup** |
+| WS5 | Backend API & Data Model | REST API (16 endpoints), DB, JWT auth, RBAC, audit trail, webhooks — **103/103 unit tests + 38/38 spatial tests passing** |
 | WS6 | Results UI, QA & Deployment | Response/Regulatory panels, end-to-end tests, hosting |
 
 ## API Endpoints
@@ -36,13 +36,19 @@ A web application for reporting water spills in Macomb County, MI. A reporter en
 | --- | --- | --- | --- |
 | `GET` | `/health` | No | Status check |
 | `POST` | `/auth/login` | No | Authenticate, receive JWT |
-| `POST` | `/auth/register` | Admin | Register a new user |
-| `POST` | `/lookup` | Responder+ | Location + spill details → jurisdictions + contacts |
+| `POST` | `/auth/register` | Admin | Register a new user (with role) |
+| `POST` | `/lookup` | Responder+ | Location + spill details → jurisdictions + downstream path + contacts |
 | `POST` | `/incidents` | Responder+ | Save incident, emit event |
 | `GET` | `/incidents/{id}` | Viewer+ | Fetch saved incident |
 | `GET` | `/events` | Viewer+ | Poll incident events (dashboard, Accela) |
+| `GET` | `/contacts` | Viewer+ | List contacts (paginated) |
+| `POST` | `/contacts` | Admin | Create a contact |
+| `DELETE` | `/contacts/{id}` | Admin | Delete a contact |
+| `GET` | `/rules` | Viewer+ | List rules (paginated) |
+| `POST` | `/rules` | Admin | Create a rule |
+| `DELETE` | `/rules/{id}` | Admin | Delete a rule |
 | `POST` | `/webhooks` | Admin | Register a webhook URL |
-| `GET` | `/webhooks` | Admin | List registered webhooks |
+| `GET` | `/webhooks` | Admin | List registered webhooks (paginated) |
 | `DELETE` | `/webhooks/{id}` | Admin | Remove a webhook |
 
 ## Getting Started

@@ -32,24 +32,34 @@ def build_event(
     )
 
 
-def _is_safe_url(url: str) -> bool:
-    """Check that a URL does not resolve to a private/loopback/reserved IP at dispatch time."""
+def _resolve_safe_url(url: str) -> str | None:
+    """Resolve URL hostname and return URL with pinned IP if safe, None if unsafe.
+
+    Replaces hostname with the resolved IP to prevent TOCTOU DNS rebinding attacks.
+    """
     parsed = urllib.parse.urlparse(url)
     hostname = parsed.hostname
     if not hostname:
-        return False
+        return None
     try:
         resolved = socket.getaddrinfo(hostname, None)
     except socket.gaierror:
-        return False
+        return None
+    safe_ip = None
     for _family, _type, _proto, _canonname, sockaddr in resolved:
         try:
             addr = ipaddress.ip_address(sockaddr[0])
             if addr.is_private or addr.is_loopback or addr.is_reserved or addr.is_link_local:
-                return False
+                return None
+            if safe_ip is None:
+                safe_ip = str(addr)
         except ValueError:
-            return False
-    return True
+            return None
+    if safe_ip is None:
+        return None
+    # Replace hostname with resolved IP to pin the connection
+    pinned = parsed._replace(netloc=f"{safe_ip}:{parsed.port}" if parsed.port else safe_ip)
+    return urllib.parse.urlunparse(pinned)
 
 
 async def dispatch_webhooks(event_data: dict) -> None:
@@ -70,15 +80,19 @@ async def dispatch_webhooks(event_data: dict) -> None:
 
     async with httpx.AsyncClient(timeout=5.0) as client:
 
-        async def _post(url: str) -> None:
-            if not _is_safe_url(url):
+        async def _post(url: str, original_host: str) -> None:
+            pinned_url = _resolve_safe_url(url)
+            if pinned_url is None:
                 logger.warning(
                     "Webhook URL %s resolves to a private/reserved address, skipping",
                     url,
                 )
                 return
             try:
-                await client.post(url, json=event_data)
+                await client.post(
+                    pinned_url, json=event_data,
+                    headers={"Host": original_host},
+                )
             except httpx.HTTPError:
                 logger.warning(
                     "Webhook delivery failed for event %s to %s",
@@ -87,4 +101,7 @@ async def dispatch_webhooks(event_data: dict) -> None:
                     exc_info=True,
                 )
 
-        await asyncio.gather(*[_post(w.url) for w in webhooks])
+        await asyncio.gather(*[
+            _post(w.url, urllib.parse.urlparse(w.url).hostname or "")
+            for w in webhooks
+        ])

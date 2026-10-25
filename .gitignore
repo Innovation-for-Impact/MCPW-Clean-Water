@@ -13,3 +13,6 @@ build/
 venv/
 .idea/
 .vscode/
+Macomb County Spill Response Project/
+data/raw/
+data/prepared/

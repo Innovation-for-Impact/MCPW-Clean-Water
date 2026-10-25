@@ -6,6 +6,7 @@ from src.models.incident import Incident
 from src.models.jurisdiction import Jurisdiction
 from src.models.rule import Rule
 from src.models.user import User
+from src.models.waterway import Waterway
 from src.models.webhook import Webhook
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "Jurisdiction",
     "Rule",
     "User",
+    "Waterway",
     "Webhook",
     "incident_jurisdictions",
 ]

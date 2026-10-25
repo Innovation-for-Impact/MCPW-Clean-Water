@@ -1,51 +1,55 @@
-from geoalchemy2.functions import ST_DWithin, ST_MakePoint, ST_SetSRID
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.contact import Contact as ContactModel
-from src.models.jurisdiction import Jurisdiction as JurisdictionModel
 from src.models.rule import Rule
 from src.schemas.contact import Contact
-from src.schemas.enums import ContactRole, MaterialType
+from src.schemas.enums import ContactRole
 from src.schemas.jurisdiction import Jurisdiction
 from src.schemas.lookup import LookupRequest, LookupResult
+from src.services.spatial import find_nearest_water, lookup_jurisdictions, trace_downstream
+
+log = logging.getLogger(__name__)
 
 
 async def run_lookup(db: AsyncSession, request: LookupRequest) -> LookupResult:
     """Orchestrate WS3 spatial query + WS4 rules engine."""
 
-    point = ST_SetSRID(ST_MakePoint(request.location.lon, request.location.lat), 4326)
     buffer_m = request.buffer_radius_m or 0
+    lat, lon = request.location.lat, request.location.lon
 
     # WS3: spatial query — find jurisdictions that intersect the point/buffer
-    if buffer_m > 0:
-        spatial_filter = ST_DWithin(JurisdictionModel.geometry, point, buffer_m)
-    else:
-        spatial_filter = ST_DWithin(JurisdictionModel.geometry, point, 0)
-
-    stmt = select(JurisdictionModel).where(spatial_filter)
-    result = await db.execute(stmt)
-    jurisdiction_rows = result.scalars().all()
+    jurisdiction_dicts = await lookup_jurisdictions(lat, lon, db=db, buffer_m=buffer_m)
 
     jurisdictions = [
-        Jurisdiction(
-            layer=j.layer,
-            jurisdiction_id=j.jurisdiction_id,
-            name=j.name,
-        )
-        for j in jurisdiction_rows
+        Jurisdiction(layer=j["layer"], jurisdiction_id=j["jurisdiction_id"], name=j["name"])
+        for j in jurisdiction_dicts
     ]
-    jurisdiction_ids = [j.jurisdiction_id for j in jurisdictions]
+    jurisdiction_layers = list({j["layer"] for j in jurisdiction_dicts})
+
+    # WS3: downstream tracing — find nearest water + trace path
+    downstream_path: list[str] = []
+    try:
+        nearest = await find_nearest_water(lat, lon, db=db)
+        if nearest:
+            path = await trace_downstream(nearest["nhd_comid"], db=db)
+            seen: set[str] = set()
+            for w in path:
+                if w["name"] and w["name"] not in seen:
+                    seen.add(w["name"])
+                    downstream_path.append(w["name"])
+    except Exception:
+        log.exception("Downstream tracing failed, returning empty path")
 
     # WS4: rules engine — find contacts based on jurisdictions + material + size
     response_contacts: list[Contact] = []
     regulatory_contacts: list[Contact] = []
 
-    if jurisdiction_ids:
+    if jurisdiction_layers:
         rules_stmt = select(Rule).where(
-            Rule.jurisdiction_type.in_(
-                [j.layer for j in jurisdiction_rows]
-            )
+            Rule.jurisdiction_type.in_(jurisdiction_layers)
         )
         if request.material:
             rules_stmt = rules_stmt.where(
@@ -77,14 +81,14 @@ async def run_lookup(db: AsyncSession, request: LookupRequest) -> LookupResult:
                     source_url=c.source_url,
                     last_verified=c.last_verified,
                 )
-                if c.role == ContactRole.response:
+                if c.role == ContactRole.response.value:
                     response_contacts.append(contact)
                 else:
                     regulatory_contacts.append(contact)
 
     return LookupResult(
         jurisdictions=jurisdictions,
-        downstream_path=[],  # WS3 downstream tracing — placeholder for integration
+        downstream_path=downstream_path,
         response_contacts=response_contacts,
         regulatory_contacts=regulatory_contacts,
     )

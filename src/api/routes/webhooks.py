@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,8 +32,10 @@ async def create_webhook(
 async def list_webhooks(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(RequireRole("admin")),
+    limit: int = Query(default=100, le=500),
+    offset: int = Query(default=0, ge=0),
 ):
-    result = await db.execute(select(Webhook))
+    result = await db.execute(select(Webhook).limit(limit).offset(offset))
     webhooks = result.scalars().all()
     return [
         WebhookResponse(

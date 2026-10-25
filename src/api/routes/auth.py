@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import RequireRole, get_db
 from src.models.user import User
-from src.schemas.auth import LoginRequest, Token
+from src.schemas.auth import LoginRequest, RegisterRequest, Token
 from src.services.auth import authenticate_user, create_access_token, hash_password
 
 router = APIRouter()
@@ -25,7 +25,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/auth/register", status_code=201)
 async def register(
-    body: LoginRequest,
+    body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(RequireRole("admin")),
 ):
@@ -37,7 +37,7 @@ async def register(
     user = User(
         username=body.username,
         password_hash=hash_password(body.password),
-        role="viewer",
+        role=body.role.value,
     )
     db.add(user)
     await db.commit()

@@ -1,0 +1,360 @@
+[
+  {
+    "id": 1,
+    "description": "Downtown Mount Clemens \u2014 on the Clinton River",
+    "lat": 42.5973,
+    "lon": -82.8779,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_mt_clemens",
+        "name": "City of Mt Clemens"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_cranberry_marsh_drain_clinton_river",
+        "name": "Cranberry Marsh Drain-Clinton River"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": "Clinton River",
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Clinton River"
+    ],
+    "expected_flags": {
+      "beach_downstream": true,
+      "intake_downstream": false,
+      "outside_county": false
+    }
+  },
+  {
+    "id": 2,
+    "description": "Sterling Heights \u2014 near Moore Drain / Plum Brook",
+    "lat": 42.5803,
+    "lon": -83.0302,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_sterling_heights",
+        "name": "City of Sterling Heights"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_plum_brook",
+        "name": "Plum Brook"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": "Moore Drain",
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Moore Drain",
+      "Plum Brook",
+      "Red Run",
+      "Clinton River",
+      "Clinton River Spillway"
+    ],
+    "expected_flags": {
+      "beach_downstream": false,
+      "intake_downstream": false,
+      "outside_county": false
+    }
+  },
+  {
+    "id": 3,
+    "description": "Lake St. Clair shoreline \u2014 Harrison Township",
+    "lat": 42.596,
+    "lon": -82.81,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_harrison_township",
+        "name": "Harrison Township"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_cranberry_marsh_drain_clinton_river",
+        "name": "Cranberry Marsh Drain-Clinton River"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": "Clinton River",
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Clinton River"
+    ],
+    "expected_flags": {
+      "beach_downstream": true,
+      "intake_downstream": false,
+      "outside_county": false
+    },
+    "notes": "NHD does not have Lake St. Clair as a flowline; nearest is Clinton River mouth."
+  },
+  {
+    "id": 4,
+    "description": "Municipal boundary line \u2014 Mount Clemens / Clinton Township border",
+    "lat": 42.593,
+    "lon": -82.892,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_mt_clemens",
+        "name": "City of Mt Clemens"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_cranberry_marsh_drain_clinton_river",
+        "name": "Cranberry Marsh Drain-Clinton River"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": "Clinton River",
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Clinton River",
+      "Clinton River Spillway"
+    ],
+    "expected_flags": {
+      "beach_downstream": false,
+      "intake_downstream": false,
+      "outside_county": false
+    },
+    "notes": "Point on boundary near Clinton River (~454m). Jurisdiction test verifies boundary handling."
+  },
+  {
+    "id": 5,
+    "description": "County line \u2014 Oakland/Macomb border (north of Utica)",
+    "lat": 42.633,
+    "lon": -83.035,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_utica",
+        "name": "City of Utica"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_gloede_ditch",
+        "name": "Gloede Ditch"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": "Old Canal",
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Old Canal"
+    ],
+    "expected_flags": {
+      "beach_downstream": false,
+      "intake_downstream": false,
+      "outside_county": true
+    },
+    "notes": "Point near county line. Old Canal (~277m). Jurisdiction test verifies outside_county flag."
+  },
+  {
+    "id": 6,
+    "description": "County line \u2014 St. Clair/Macomb border (near New Baltimore)",
+    "lat": 42.681,
+    "lon": -82.737,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_new_baltimore",
+        "name": "City of New Baltimore"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": "Crapaud Creek",
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Crapaud Creek"
+    ],
+    "expected_flags": {
+      "beach_downstream": true,
+      "intake_downstream": false,
+      "outside_county": true
+    },
+    "notes": "Point near St. Clair County border. Crapaud Creek (~178m) flows toward New Baltimore Civic Beach."
+  },
+  {
+    "id": 7,
+    "description": "North Macomb \u2014 Macomb Township area",
+    "lat": 42.67,
+    "lon": -82.94,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_macomb_township",
+        "name": "Macomb Township"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_middle_branch_clinton_river",
+        "name": "Middle Branch Clinton River"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": "Middle Branch Clinton River",
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Middle Branch Clinton River",
+      "North Branch Clinton River",
+      "Clinton River",
+      "Clinton River Spillway"
+    ],
+    "expected_flags": {
+      "beach_downstream": false,
+      "intake_downstream": false,
+      "outside_county": false
+    }
+  },
+  {
+    "id": 8,
+    "description": "Warren city center",
+    "lat": 42.49,
+    "lon": -83.015,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_warren",
+        "name": "City of Warren"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_mccoy_drain_red_run",
+        "name": "McCoy Drain-Red Run"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": null,
+      "max_distance_m": 1500
+    },
+    "expected_downstream": [
+      "Harrington Drain",
+      "Clinton River",
+      "Clinton River Spillway"
+    ],
+    "expected_flags": {
+      "beach_downstream": false,
+      "intake_downstream": false,
+      "outside_county": false
+    },
+    "notes": "Nearest waterway is unnamed at ~1235m. Downstream path goes through Harrington Drain to Clinton River."
+  },
+  {
+    "id": 9,
+    "description": "Central Shelby Township \u2014 near unnamed stream",
+    "lat": 42.67,
+    "lon": -83.05,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_shelby_township",
+        "name": "Shelby Township"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      },
+      {
+        "layer": "subwatershed",
+        "jurisdiction_id": "ws_yates_drain_middle_branch_clinton_river",
+        "name": "Yates Drain-Middle Branch Clinton River"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": null,
+      "max_distance_m": 500
+    },
+    "expected_downstream": [
+      "Middle Branch Clinton River",
+      "North Branch Clinton River",
+      "Clinton River",
+      "Clinton River Spillway"
+    ],
+    "expected_flags": {
+      "beach_downstream": false,
+      "intake_downstream": false,
+      "outside_county": false
+    },
+    "notes": "Nearest is unnamed stream at ~279m. NHD has dense coverage here."
+  },
+  {
+    "id": 10,
+    "description": "Near potential drinking-water intake \u2014 Lake St. Clair near water treatment plant",
+    "lat": 42.5912,
+    "lon": -82.8305,
+    "expected_jurisdictions": [
+      {
+        "layer": "municipality",
+        "jurisdiction_id": "muni_harrison_township",
+        "name": "Harrison Township"
+      },
+      {
+        "layer": "county",
+        "jurisdiction_id": "county_macomb",
+        "name": "Macomb County"
+      }
+    ],
+    "expected_nearest_water": {
+      "name": null,
+      "max_distance_m": 500
+    },
+    "expected_downstream": [],
+    "expected_flags": {
+      "beach_downstream": false,
+      "intake_downstream": true,
+      "outside_county": false
+    },
+    "notes": "Nearest unnamed stream at ~373m has intake_downstream flag due to proximity to GLWA Lake St. Clair water intake."
+  }
+]
