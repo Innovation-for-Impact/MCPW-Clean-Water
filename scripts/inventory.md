@@ -11,7 +11,7 @@ Last updated: 2026-10-25 (URLs verified against macomb_gis_data_sources.xlsx; HT
 | 3 | Lake St. Clair shoreline | State of Michigan (DTMB/CSS) | Polygon layer | [REST](https://gisagocss.state.mi.us/arcgis/rest/services/OpenData/hydro/MapServer/13) | NAD83 | State of Michigan | **Corrected** — original great-lakes-shoreline slug was wrong |
 | 4 | Clinton River subwatersheds (HUC-12) | USGS WBD | GeoJSON via REST | [REST query](https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/6/query?where=HUC12+LIKE+%2704090003%25%27&outFields=*&f=geojson) | NAD83 | USGS | **Loaded** — 21 subwatersheds clipped to county, automated via `download_layers.py` |
 | 5 | Water bodies + stream flowlines | USGS NHDPlus HR | FileGDB | [S3 direct](https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/VPU/Current/GDB/NHDPLUS_H_0409_HU4_GDB.zip) | NAD83 | USGS | **Loaded** — 1,917 flowlines clipped to county, 1,889 with downstream links, automated via `download_layers.py` + `load_waterways.py` |
-| 6 | County drain districts | Macomb County Public Works | TBD (vector data unconfirmed) | [Drain maps (PDF/interactive)](https://macombgov.org/departments/public-works/public-works-resources/macomb-county-drain-maps) / Contact: public.works@macombgov.org, 586-469-5325 | TBD | Macomb County | **Pending** — 475 drains viewable; check for REST feature service before requesting |
+| 6 | County drain districts | Macomb County Public Works | TBD (vector data unconfirmed) | [Drain maps (PDF/interactive)](https://macombgov.org/departments/public-works/public-works-resources/macomb-county-drain-maps) / Contact: public.works@macombgov.org, 586-469-5325 | TBD | Macomb County | **Pending** — vector data not publicly available; formal data request required |
 | 7 | Storm sewer outfalls | Macomb County Public Works | TBD | Contact: public.works@macombgov.org, 586-469-5325 | TBD | Macomb County | **Pending request** |
 | 8 | USCG/EPA response zone line | USCG / EPA | TBD | TBD | TBD | Federal | **Unknown** |
 | 9 | EGLE environmental data (intakes, NPDES, Part 201) | Michigan EGLE | REST service | [EGLE Hub](https://gis-egle.hub.arcgis.com/) / [RRD REST](https://gisagoegle.state.mi.us/arcgis/rest/services/EGLE/RRDOpenData/MapServer) | TBD | EGLE | **Verified** — Hub returns 200; RRD REST drops automated connections (works in browser); intake/NPDES layers not individually confirmed yet |
@@ -51,15 +51,58 @@ Last updated: 2026-10-25 (URLs verified against macomb_gis_data_sources.xlsx; HT
 
 ## Data Gaps
 
-- **County drain districts**: 475 drains viewable via interactive maps, but vector download unconfirmed. Macomb County GIS portal (`gis.macombgov.org`) blocks all automated access — no hidden REST endpoints found. Requires formal data request to Public Works.
+- **County drain districts**: Not publicly available. Macomb County GIS portal (`gis.macombgov.org`) blocks all automated access — no REST endpoints found. Requires formal data request to Public Works.
 - **Storm sewer outfalls**: Not publicly available. Requires data-sharing request to Macomb County Public Works.
 - **USCG/EPA response zone line**: Source and availability TBD. May need to digitize from published charts.
 - **Public water supply intakes**: Available via EGLE hub but individual layer URL not yet confirmed. GLWA Lake St. Clair intake approximated from known location and flagged in waterways table.
 
 ## Refresh Procedure
 
-1. Download updated data to `data/raw/{layer_name}/`
-2. Run ETL scripts (clip, reproject, assign IDs)
-3. Verify row counts and spot-check geometries
-4. Load into PostGIS via `scripts/load_layers.py`
-5. Ensure jurisdiction IDs remain stable (match on name/FIPS, not row order)
+### Jurisdictions (municipalities, shoreline, county boundary, subwatersheds)
+
+```bash
+# 1. Download updated source files
+python scripts/download_layers.py --all          # fetches all layers to data/raw/
+
+# 2. Clip to Macomb County boundary and reproject to EPSG:4326
+python scripts/clip_and_reproject.py
+
+# 3. Load into PostGIS (use --dry-run first to preview)
+python -m scripts.load_layers --dry-run
+python -m scripts.load_layers
+```
+
+### Waterways (NHDPlus HR flowlines + downstream links)
+
+```bash
+# 1. Download NHDPlus HR GDB (VPU 0409) — ~800MB zip
+#    URL: https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/VPU/Current/GDB/NHDPLUS_H_0409_HU4_GDB.zip
+#    Extract to data/raw/waterways/
+
+# 2. Load flowlines (clipped to county boundary)
+python -m scripts.load_waterways \
+    -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb \
+    --layer NHDFlowline \
+    --clip data/raw/municipalities/macomb_county_boundary.geojson
+
+# 3. Build downstream connectivity links
+python -m scripts.build_downstream_links \
+    -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb \
+    --layer NHDPlusFlow
+```
+
+### Verification
+
+After loading, verify:
+- Row counts match expectations (41 municipalities, 1 shoreline, 1 county, 21 subwatersheds, ~1,917 flowlines)
+- Jurisdiction IDs remain stable across refreshes (format: `{layer}_{slug}`, matched on name/FIPS, not row order)
+- Spot-check geometries in QGIS or DBeaver
+- Run spatial tests: `python -m pytest tests/test_spatial.py -v`
+- Run benchmarks: `python -m scripts.benchmark_spatial`
+
+### ID Stability
+
+Jurisdiction IDs use the format `{layer}_{slug}` (e.g., `muni_mt_clemens`, `ws_plum_brook`). These IDs are foreign keys used by the rules and contacts tables. When refreshing data:
+- Match existing records by name or FIPS code, not by row order
+- Flag any new or removed jurisdictions for contact/rule updates
+- Never reassign an existing jurisdiction_id to a different geometry

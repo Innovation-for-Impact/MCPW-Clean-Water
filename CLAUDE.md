@@ -43,6 +43,9 @@ python -m scripts.load_layers          # --dry-run to preview
 # Waterway pipeline: load NHDPlus HR flowlines + build downstream links
 python -m scripts.load_waterways -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb --layer NHDFlowline --clip data/raw/municipalities/macomb_county_boundary.geojson
 python -m scripts.build_downstream_links -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb --layer NHDPlusFlow
+
+# Benchmark spatial queries (requires PostGIS with loaded data)
+SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.benchmark_spatial
 ```
 
 ## Architecture
@@ -66,6 +69,11 @@ python -m scripts.build_downstream_links -i data/raw/waterways/NHDPLUS_H_0409_HU
 - `waterway.py` — Geography LINESTRING for waterways/downstream tracing
 - `user.py`, `event.py`, `webhook.py`, `contact.py`, `rule.py`, `association.py`
 
+### API Endpoints
+- **Layers** (`src/api/routes/layers.py`): Public GeoJSON endpoints for WS1 map overlays — `GET /layers/jurisdictions` (list layers), `GET /layers/jurisdictions/{layer_name}` (FeatureCollection), `GET /layers/waterways` (flowlines with `named_only`/pagination params). No auth required.
+- **Lookup** (`src/api/routes/lookup.py`): `POST /lookup` — orchestrates WS3 spatial query + WS4 rules engine via `src/services/lookup.py`
+- Contacts and rules routes do direct ORM CRUD without a dedicated service file
+
 ### Testing Infrastructure
 Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.py` applies extensive monkey-patches to make SQLAlchemy/GeoAlchemy2 work on SQLite:
 - Compiles UUID → CHAR(32), JSONB → TEXT, Geography → TEXT
@@ -76,7 +84,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 
 **Important**: bcrypt is pinned to 4.0.1 because passlib is incompatible with bcrypt 5.x.
 
-**Test status**: 103 unit tests pass on SQLite + 38 spatial tests pass on PostGIS (10 jurisdiction lookups, 10 nearest-water, 9 downstream traces, 9 downstream flags; 2 skipped for TC10 terminal segment). **141 total.**
+**Test status**: 127 unit tests pass on SQLite + 38 spatial tests pass on PostGIS (10 jurisdiction lookups, 10 nearest-water, 9 downstream traces, 9 downstream flags; 2 skipped for TC10 terminal segment). **165 total.**
 
 ## Environment Variables
 - `SECRET_KEY` — **required**, used for JWT signing
@@ -107,27 +115,8 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 ### Blocked — External Dependency
 1. **Obtain drain district + storm sewer outfall data** from Macomb County Public Works (requires manual outreach — contact public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285)
 
-### Completed (audit round 3)
-- Added Alembic migration `c5f8d2a1e7b3` for `ck_users_valid_role` CheckConstraint + performance indexes
-- Verified jurisdiction geometry_type is consistent between model (`GEOMETRY`) and migration (default `GEOMETRY`) — no change needed
-- Implemented real Accela API integration with OAuth2 client credentials, behind `ACCELA_ENABLED` feature flag
-
-### Completed (audit round 2)
-- Wired downstream tracing into `/lookup` — calls `find_nearest_water` + `trace_downstream`
-- Wired `lookup_jurisdictions` into `run_lookup` — eliminated duplicated spatial query
-- Added CRUD routes for Contact and Rule with Pydantic request schemas (`ContactCreate`, `RuleCreate`)
-- Fixed register endpoint to accept role parameter via `RegisterRequest` schema
-- Added `seed_contacts.py` and `seed_rules.py`
-- Constrained `User.role` with `CheckConstraint` + `UserRole` enum
-- Replaced N+1 `trace_downstream` with recursive CTE (SQLite fallback preserved)
-- Added password complexity validation (8-char minimum)
-- Improved lookup tests with seeded jurisdiction/contact/rule data
-- Added Location bounds validation (lat ±90, lon ±180) and buffer_radius_m cap (50km)
-- Added pagination to contacts, rules, and webhooks list endpoints
-- Fixed SSRF TOCTOU in webhook dispatch — pins resolved IP to prevent DNS rebinding
-- Changed Jurisdiction relationship loading from `selectin` to `noload` to avoid unnecessary eager loads
-- Added indexes on `waterways.downstream_comid` and `rules.jurisdiction_type`
-- Fixed N+1 in `create_incident` contact association loop — batch lookup via `tuple_.in_`
-- Added `src/schemas/rule.py` with `RuleCreate` and `RuleResponse`
-- Fixed role comparison in `lookup.py` to use `.value` explicitly
-- Added 16 new tests for Contact and Rule CRUD (`test_contacts.py`, `test_rules.py`)
+### Remaining
+- WS5 Phase 4.1: End-to-end integration test (submit incident → verify jurisdictions, contacts, and event are correct on PostGIS)
+- WS5 Phase 4.2: Pilot readiness — waiting on WS6 scenarios
+- WS3 Phase 3.2: Coordinate with WS1 on chosen layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
+- Run `scripts/benchmark_spatial.py` against PostGIS to validate performance targets

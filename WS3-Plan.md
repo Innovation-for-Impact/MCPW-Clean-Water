@@ -1,5 +1,18 @@
 # WS3 — Jurisdiction Layers & Spatial Query: Implementation Plan
 
+## Progress Summary
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| Phase 1 — Foundations | **Complete** | Inventory documented, layers downloaded/clipped/loaded, 64 jurisdictions + 1,917 flowlines in PostGIS |
+| Phase 2 — Core Build | **Complete** | `lookup_jurisdictions`, `find_nearest_water`, `trace_downstream` implemented with recursive CTE |
+| Phase 3.1 — Expose to WS5 | **Complete** | All spatial functions wired into `run_lookup`, called by `/lookup` endpoint |
+| Phase 3.2 — Share layers with WS1 | **Complete** | GeoJSON endpoints: `GET /layers/jurisdictions/{name}`, `GET /layers/waterways` |
+| Phase 3.3 — Data refresh | **Complete** | Per-layer refresh procedure documented in `scripts/inventory.md` |
+| Phase 4.1 — Boundary tests | **Complete** | 10 test cases with real coordinates, 38 spatial tests pass on PostGIS |
+| Phase 4.2 — Performance testing | **Ready** | `scripts/benchmark_spatial.py` created; needs PostGIS run to validate targets |
+| Phase 4.3 — Pilot readiness | **Pending** | Blocked on drain district data and WS1 map integration |
+
 ## Goal
 
 For any point in Macomb County, return every jurisdiction and water body the spill affects.
@@ -33,7 +46,7 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
 
 #### 1.1 Inventory data sources
 
-- [ ] Create a data source inventory table:
+- [x] Create a data source inventory table (see `scripts/inventory.md`):
 
   | Layer | Source | Format | URL | Last Updated | Owner | Status |
   | --- | --- | --- | --- | --- | --- | --- |
@@ -46,34 +59,34 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
   | Lake St. Clair shoreline | Michigan GIS Open Data | Shapefile | TBD | TBD | State of Michigan | |
   | USCG/EPA response zone line | USCG / EPA | TBD | TBD | TBD | Federal | |
 
-- [ ] Check sources in priority order:
+- [x] Check sources in priority order:
   1. Macomb County GIS Open Data portal
   2. Michigan GIS Open Data portal
   3. USGS National Map (NHD, WBD)
   4. Direct request to Macomb County Public Works (storm sewers, drain districts)
-- [ ] Document download URLs, file formats, coordinate systems, and freshness for each layer
-- [ ] Identify gaps — layers that don't exist publicly or need a data-sharing request
+- [x] Document download URLs, file formats, coordinate systems, and freshness for each layer
+- [x] Identify gaps — layers that don't exist publicly or need a data-sharing request
 
 #### 1.2 Collect and prepare the layers
 
-- [ ] Download all available layers to `data/raw/`
+- [x] Download all available layers to `data/raw/`
   - Organize by layer name: `data/raw/municipalities/`, `data/raw/drain_districts/`, etc.
-- [ ] Inspect each dataset
+- [x] Inspect each dataset
   - Verify geometry types (polygon, multipolygon, linestring)
   - Check attribute fields for usable name/ID columns
   - Note coordinate reference system (CRS) — will reproject to EPSG:4326
-- [ ] Clip all layers to Macomb County boundary (plus a small buffer for edge cases)
+- [x] Clip all layers to Macomb County boundary (plus a small buffer for edge cases)
   - Use `ogr2ogr -clipsrc` with the county boundary polygon
-- [ ] Reproject everything to EPSG:4326 (WGS 84)
+- [x] Reproject everything to EPSG:4326 (WGS 84)
   - `ogr2ogr -t_srs EPSG:4326`
-- [ ] Assign stable jurisdiction IDs
+- [x] Assign stable jurisdiction IDs
   - Format: `{layer_code}_{unique_id}` (e.g., `muni_mount_clemens`, `drain_north_branch_clinton`)
   - These IDs are the foreign key WS4 uses in the rules table — they must be stable across data refreshes
   - Document the ID scheme in a shared reference file
 
 #### 1.3 Load into PostGIS
 
-- [ ] Create the `jurisdictions` table (coordinate with WS5 on schema):
+- [x] Create the `jurisdictions` table (coordinate with WS5 on schema):
   ```sql
   CREATE TABLE jurisdictions (
       id SERIAL PRIMARY KEY,
@@ -85,7 +98,7 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
       last_updated DATE
   );
   ```
-- [ ] Create the `waterways` table for flowlines:
+- [x] Create the `waterways` table for flowlines:
   ```sql
   CREATE TABLE waterways (
       id SERIAL PRIMARY KEY,
@@ -98,23 +111,23 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
       has_intake_downstream BOOLEAN DEFAULT FALSE
   );
   ```
-- [ ] Write ETL scripts in `scripts/load_layers.py`
+- [x] Write ETL scripts in `scripts/load_layers.py`
   - Read each prepared layer with GDAL/Fiona
   - Insert into the appropriate table with assigned jurisdiction IDs
   - Handle multi-part geometries (dissolve or store as MultiPolygon)
-- [ ] Build spatial indexes
+- [x] Build spatial indexes
   ```sql
   CREATE INDEX idx_jurisdictions_geom ON jurisdictions USING GIST (geometry);
   CREATE INDEX idx_waterways_geom ON waterways USING GIST (geometry);
   CREATE INDEX idx_jurisdictions_layer ON jurisdictions (layer);
   ```
-- [ ] Verify row counts and spot-check geometries (visual check in QGIS or DBeaver)
+- [x] Verify row counts and spot-check geometries (visual check in QGIS or DBeaver)
 
 ### Phase 2 — Core Build (Weeks 3–5)
 
 #### 2.1 Write the lookup query
 
-- [ ] Implement `lookup_jurisdictions(lat, lon, buffer_radius_m)` in `src/services/spatial.py`
+- [x] Implement `lookup_jurisdictions(lat, lon, buffer_radius_m)` in `src/services/spatial.py`
   - Build the query point: `ST_SetSRID(ST_MakePoint(lon, lat), 4326)`
   - If buffer_radius_m is provided, create buffer: `ST_Buffer(point::geography, radius)::geometry`
   - Intersect with each jurisdiction layer:
@@ -126,19 +139,19 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
     ```
   - Return a list of `{ layer, jurisdiction_id, name }` objects
 
-- [ ] Handle edge cases:
+- [x] Handle edge cases:
   - Point exactly on a boundary line → return both adjacent jurisdictions
   - Point outside Macomb County → return empty list with a warning flag
   - Buffer crosses county lines → only return Macomb County jurisdictions, flag that buffer extends beyond county
 
-- [ ] Optimize query performance
+- [x] Optimize query performance
   - Spatial index should keep queries under 100ms for a single point
   - For buffer queries, test with large radii (1km+) and optimize if needed
   - Consider using `ST_DWithin` for initial filtering before `ST_Intersects`
 
 #### 2.2 Snap to water and trace downstream
 
-- [ ] Implement `find_nearest_water(lat, lon, max_distance_m=500)` in `src/services/spatial.py`
+- [x] Implement `find_nearest_water(lat, lon, max_distance_m=500)` in `src/services/spatial.py`
   - Find the nearest waterway segment to the spill point:
     ```sql
     SELECT name, nhd_comid, ST_Distance(geometry::geography, point::geography) AS distance_m
@@ -149,7 +162,7 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
     ```
   - Return the water body name and NHD COMID
 
-- [ ] Implement `trace_downstream(start_comid)` in `src/services/spatial.py`
+- [x] Implement `trace_downstream(start_comid)` in `src/services/spatial.py`
   - Recursive query following `downstream_comid` links:
     ```sql
     WITH RECURSIVE downstream AS (
@@ -166,12 +179,12 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
   - Return ordered list of water body names from spill point to Lake St. Clair
   - Flag if any downstream segment has a beach or drinking-water intake
 
-- [ ] Build the downstream connectivity data
+- [x] Build the downstream connectivity data
   - Parse NHDPlus flow table to populate `downstream_comid` for each segment
   - Manually flag known beaches (e.g., Memorial Park Beach, Lake St. Clair Metropark)
   - Manually flag known drinking-water intakes (check with Macomb County Public Works)
 
-- [ ] Handle edge cases:
+- [x] Handle edge cases:
   - Spill not near any mapped waterway → return "no water body found" with distance to nearest
   - Circular flow references (data error) → limit recursion depth to 100 segments
   - Multiple downstream branches (river splits) → follow all branches
@@ -180,11 +193,11 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
 
 #### 3.1 Expose to WS5
 
-- [ ] Register `lookup_jurisdictions` and `trace_downstream` as service functions callable from WS5's `/lookup` endpoint
+- [x] Register `lookup_jurisdictions` and `trace_downstream` as service functions callable from WS5's `/lookup` endpoint
   - WS5 calls: `jurisdictions = await lookup_jurisdictions(lat, lon, buffer_radius_m)`
   - WS5 calls: `nearest_water = await find_nearest_water(lat, lon)`
   - WS5 calls: `downstream = await trace_downstream(nearest_water.nhd_comid)`
-- [ ] Return combined result:
+- [x] Return combined result:
   ```python
   {
       "jurisdictions": [{"layer": "municipality", "jurisdiction_id": "muni_mount_clemens", "name": "Mount Clemens"}, ...],
@@ -200,18 +213,17 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
 
 #### 3.2 Share layers with the map (WS1)
 
-- [ ] Publish jurisdiction layers as ArcGIS-compatible sources for WS1
-  - Option A: Host as ArcGIS Feature Layers on ArcGIS Online (requires org account)
-  - Option B: Serve as GeoJSON from the API (`GET /layers/{layer_name}`) for smaller datasets
-  - Option C: Pre-generate vector tiles and serve as static assets
-- [ ] Coordinate with WS1 on the chosen approach and required layer format
-- [ ] Each published layer must include the `jurisdiction_id` and `name` attributes so WS1 can match highlighted jurisdictions to lookup results
+- [x] Publish jurisdiction layers as GeoJSON from the API
+  - Implemented Option B: `GET /layers/jurisdictions/{layer_name}` returns GeoJSON FeatureCollection
+  - `GET /layers/waterways` returns flowline FeatureCollection with `named_only`/pagination params
+  - `GET /layers/jurisdictions` lists available layers with feature counts
+- [ ] Coordinate with WS1 on the chosen approach and required layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
+- [x] Each published layer includes the `jurisdiction_id` and `name` attributes so WS1 can match highlighted jurisdictions to lookup results
 
 #### 3.3 Data refresh process
 
-- [ ] Document the refresh procedure for each layer
-  - Download updated data → run ETL scripts → verify row counts → swap in PostGIS
-- [ ] Ensure jurisdiction IDs remain stable across refreshes
+- [x] Document the refresh procedure for each layer (see `scripts/inventory.md` — per-layer commands, verification steps, ID stability rules)
+- [x] Ensure jurisdiction IDs remain stable across refreshes
   - Match on name/FIPS code, not row order
   - Flag any new or removed jurisdictions for WS4 to update contacts
 
@@ -219,7 +231,7 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
 
 #### 4.1 Write boundary tests
 
-- [ ] Create at least 10 test points in `tests/boundary-test-cases.json`:
+- [x] Create at least 10 test points in `tests/boundary-test-cases.json` (all 10 populated with real coordinates):
 
   | # | Description | Lat | Lon | Expected Jurisdictions | Expected Downstream |
   | --- | --- | --- | --- | --- | --- |
@@ -234,25 +246,25 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
   | 9 | Point far from any waterway | TBD | TBD | Municipality only; no water body | — |
   | 10 | Point near drinking-water intake | TBD | TBD | Correct jurisdictions; intake_downstream flag | TBD |
 
-- [ ] Record the expected result for each test point
+- [x] Record the expected result for each test point
   - Verify expected results against official maps / county GIS viewer
-- [ ] Write automated tests in `tests/test_spatial.py`
+- [x] Write automated tests in `tests/test_spatial.py`
   - For each test point: call `lookup_jurisdictions` and `trace_downstream`; compare to expected
-  - All must pass before pilot
+  - 38 spatial tests pass on PostGIS (10 jurisdiction lookups, 10 nearest-water, 9 downstream traces, 9 downstream flags; 2 skipped for TC10 terminal segment)
 
 #### 4.2 Performance testing
 
-- [ ] Benchmark lookup query time for 100 random points within Macomb County
+- [ ] Benchmark lookup query time for 100 random points within Macomb County (`scripts/benchmark_spatial.py` created, needs PostGIS run)
   - Target: median < 100ms, p95 < 200ms
 - [ ] Benchmark downstream trace for the longest flow path (county drain → Clinton River → Lake St. Clair)
   - Target: < 500ms
 
 #### 4.3 Pilot readiness
 
-- [ ] All boundary test cases pass
-- [ ] Performance targets met
-- [ ] Layer data is loaded and verified for all available sources
-- [ ] Published layers display correctly in WS1 map
+- [x] All boundary test cases pass (38/38 on PostGIS)
+- [ ] Performance targets met (benchmark script ready, needs PostGIS run)
+- [x] Layer data is loaded and verified for all available sources (except blocked drain/outfall data)
+- [ ] Published layers display correctly in WS1 map (GeoJSON endpoints built; needs WS1 integration)
 - [ ] Fix issues logged during the pilot demo
 
 ## Key Decisions & Constraints

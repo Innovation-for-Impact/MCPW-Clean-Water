@@ -7,8 +7,8 @@
 | Phase 1 — Foundations | **Complete** | Stack, Docker, all Pydantic models, OpenAPI docs exported |
 | Phase 2 — Core Build | **Complete** | All DB models, migrations, all endpoints, event publishing, webhooks, Accela stub |
 | Phase 3.1–3.2 — Auth & Audit | **Complete** | JWT auth (PyJWT), RBAC (3 roles), audit trail with user ID in events |
-| Phase 3.3 — WS3/WS4 Integration | **Blocked** | Waiting on WS3 spatial queries and WS4 rules engine |
-| Phase 4.1 — Tests | **In Progress** | E2E script (34/34 passing); unit/integration tests pending |
+| Phase 3.3 — WS3/WS4 Integration | **Complete** | WS3 spatial queries + WS4 rules engine wired into `run_lookup` |
+| Phase 4.1 — Tests | **In Progress** | E2E (34/34); 127 unit tests on SQLite (auth, RBAC, CRUD, validation, layers); PostGIS integration tests pending |
 | Phase 4.2 — Pilot Readiness | **Pending** | Waiting on WS6 scenarios and pilot demo |
 
 **Key security hardening completed:**
@@ -290,8 +290,8 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
 
 #### 3.3 Integration testing with WS3 and WS4
 
-- [ ] Wire WS3 spatial query into `/lookup` — replace mock with live PostGIS queries *(blocked on WS3)*
-- [ ] Wire WS4 rules engine into `/lookup` — replace mock with live rules table *(blocked on WS4)*
+- [x] Wire WS3 spatial query into `/lookup` — `lookup_jurisdictions`, `find_nearest_water`, `trace_downstream` called live from `run_lookup`
+- [x] Wire WS4 rules engine into `/lookup` — queries `Rule` table by jurisdiction_type/material/size_threshold, fetches matching `Contact` rows
 - [ ] End-to-end test: submit incident → verify jurisdictions, contacts, and event are correct
 
 ### Phase 4 — Pilot (Week 8)
@@ -301,16 +301,16 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
 - [x] E2E test script (`scripts/test_e2e.sh`) — 34 assertions across all endpoints
   - Covers: health, auth, RBAC, lookup, incidents, events, webhooks, SSRF, validation, registration
   - All 34 tests passing
-- [ ] Unit tests for each endpoint using pytest + httpx async test client
-  - Test happy paths and error cases (400, 404, 401)
-  - Mock WS3/WS4 dependencies for unit tests
+- [x] Unit tests for each endpoint using pytest + httpx async test client
+  - 127 tests on SQLite: auth, RBAC, lookup, incidents, events, contacts, rules, webhooks, layers, validation
+  - Covers happy paths, error cases (400, 404, 401, 403, 422), input validation, RBAC enforcement
 - [ ] Integration tests against a test database with PostGIS
   - Seed test jurisdiction and contact data
-  - Verify full `/lookup` and `/incidents` flow
-- [ ] Event tests
+  - Verify full `/lookup` and `/incidents` flow with real spatial queries
+- [x] Event tests
   - Verify events are created on incident creation
   - Verify `GET /events` filtering (since, limit, incident_id)
-  - Verify webhook delivery (if implemented)
+  - Verify webhook delivery
 - [ ] Run tests automatically on every push (CI configuration in WS6)
 
 #### 4.2 Pilot readiness

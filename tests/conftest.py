@@ -123,6 +123,8 @@ if "sqlite" in TEST_DATABASE_URL:
         dbapi_conn.create_function("ST_GeomFromText", 2, lambda wkt, srid: wkt)
         dbapi_conn.create_function("ST_GeogFromText", 1, lambda wkt: wkt)
         dbapi_conn.create_function("ST_AsText", 1, lambda geom: geom)
+        dbapi_conn.create_function("ST_AsGeoJSON", 1, lambda geom: '{"type":"Point","coordinates":[0,0]}' if geom else None)
+        dbapi_conn.create_function("AsGeoJSON", 1, lambda geom: '{"type":"Point","coordinates":[0,0]}' if geom else None)
         dbapi_conn.create_function("AsBinary", 1, lambda geom: geom)
         dbapi_conn.create_function("AsEWKB", 1, lambda geom: geom)
         dbapi_conn.create_function("ST_X", 1, _st_x)
