@@ -8,7 +8,7 @@ from src.schemas.location import Location
 
 class LookupRequest(BaseModel):
     location: Location
-    material: MaterialType
+    material: MaterialType | None = None
     quantity_gallons: float | None = None
     buffer_radius_m: float | None = Field(default=None, le=50000)
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.database import Base
@@ -17,5 +17,7 @@ class Rule(Base):
     )
     required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     deadline: Mapped[str | None] = mapped_column(String(100))
+    priority: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    legal_citation: Mapped[str | None] = mapped_column(Text)
 
     contact: Mapped["Contact"] = relationship()

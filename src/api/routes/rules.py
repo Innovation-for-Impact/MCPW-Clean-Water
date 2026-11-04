@@ -29,6 +29,8 @@ async def list_rules(
             "contact_id": r.contact_id,
             "required": r.required,
             "deadline": r.deadline,
+            "priority": r.priority,
+            "legal_citation": r.legal_citation,
         }
         for r in rows
     ]
@@ -48,6 +50,8 @@ async def create_rule(
         contact_id=body.contact_id,
         required=body.required,
         deadline=body.deadline,
+        priority=body.priority,
+        legal_citation=body.legal_citation,
     )
     db.add(rule)
     await db.commit()

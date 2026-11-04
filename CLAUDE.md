@@ -11,8 +11,8 @@ FastAPI async backend for Macomb County spill response. A reporter enters spill 
 ## Commands
 
 ```bash
-# Run tests (excludes spatial tests that require PostGIS)
-SECRET_KEY=test-key DATABASE_URL="sqlite+aiosqlite:///" python -m pytest tests/ -v --tb=short --ignore=tests/test_spatial.py
+# Run tests (excludes PostGIS-dependent tests)
+SECRET_KEY=test-key DATABASE_URL="sqlite+aiosqlite:///" python -m pytest tests/ -v --tb=short --ignore=tests/test_spatial.py --ignore=tests/test_postgis_e2e.py
 
 # Run a single test file
 SECRET_KEY=test-key DATABASE_URL="sqlite+aiosqlite:///" python -m pytest tests/test_auth.py -v
@@ -35,6 +35,12 @@ alembic revision --autogenerate -m "description"
 # Run spatial tests against PostGIS (requires loaded data)
 SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m pytest tests/test_spatial.py -v
 
+# Run PostGIS end-to-end integration tests (incident → spatial lookup → rules → contacts → event)
+SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m pytest tests/test_postgis_e2e.py -v
+
+# Run ALL PostGIS tests together
+SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m pytest tests/test_spatial.py tests/test_postgis_e2e.py -v
+
 # Data pipeline: download, clip, assign IDs, load jurisdictions
 python scripts/download_layers.py --all
 python scripts/clip_and_reproject.py
@@ -43,6 +49,9 @@ python -m scripts.load_layers          # --dry-run to preview
 # Waterway pipeline: load NHDPlus HR flowlines + build downstream links
 python -m scripts.load_waterways -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb --layer NHDFlowline --clip data/raw/municipalities/macomb_county_boundary.geojson
 python -m scripts.build_downstream_links -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb --layer NHDPlusFlow
+
+# Contact verification report (requires PostGIS with loaded data)
+SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.verify_contacts
 
 # Benchmark spatial queries (requires PostGIS with loaded data)
 SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.benchmark_spatial
@@ -61,6 +70,9 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 - **App entry point**: `src/api/main.py` — FastAPI app with CORS and router registration
 - **Database config**: `src/models/database.py` — reads `DATABASE_URL` env var, creates async engine and session factory. `Base` (DeclarativeBase) lives here.
 - **Auth flow**: `src/services/auth.py` handles JWT creation/validation and password hashing. Requires `SECRET_KEY` env var.
+- **Spatial service**: `src/services/spatial.py` — `lookup_jurisdictions`, `find_nearest_water`, `trace_downstream` (low-level PostGIS queries used by lookup and spatial tests)
+- **Rules engine**: `src/services/rules_engine.py` — `evaluate_rules` matches jurisdiction layers + material + quantity against rules, returns deduplicated contacts sorted by priority
+- **Lookup orchestration**: `src/services/lookup.py` — `run_lookup` ties spatial queries + rules engine together for `POST /lookup`
 - **Alembic config**: `alembic.ini` sets `script_location = src/alembic`
 
 ### Models (all inherit from `Base` in `src/models/database.py`)
@@ -70,9 +82,15 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 - `user.py`, `event.py`, `webhook.py`, `contact.py`, `rule.py`, `association.py`
 
 ### API Endpoints
-- **Layers** (`src/api/routes/layers.py`): Public GeoJSON endpoints for WS1 map overlays — `GET /layers/jurisdictions` (list layers), `GET /layers/jurisdictions/{layer_name}` (FeatureCollection), `GET /layers/waterways` (flowlines with `named_only`/pagination params). No auth required.
-- **Lookup** (`src/api/routes/lookup.py`): `POST /lookup` — orchestrates WS3 spatial query + WS4 rules engine via `src/services/lookup.py`
-- Contacts and rules routes do direct ORM CRUD without a dedicated service file
+- **Health** (`health.py`): `GET /health` — no auth
+- **Auth** (`auth.py`): `POST /auth/login`, `POST /auth/register` (admin only)
+- **Layers** (`layers.py`): Public GeoJSON endpoints for WS1 map overlays — `GET /layers/jurisdictions` (list layers), `GET /layers/jurisdictions/{layer_name}` (FeatureCollection), `GET /layers/waterways` (flowlines with `named_only`/pagination params). No auth required.
+- **Lookup** (`lookup.py`): `POST /lookup` — orchestrates WS3 spatial query + WS4 rules engine via `src/services/lookup.py`. Requires responder+.
+- **Incidents** (`incidents.py`): `POST /incidents` (responder+), `GET /incidents/{id}` (viewer+) — saves incident + emits event
+- **Events** (`events.py`): `GET /events` (viewer+) — poll incident events for dashboard/Accela
+- **Contacts** (`contacts.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — direct ORM, no service file
+- **Rules** (`rules.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — direct ORM, no service file
+- **Webhooks** (`webhooks.py`): `POST`/`GET`/`DELETE` — admin only
 
 ### Testing Infrastructure
 Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.py` applies extensive monkey-patches to make SQLAlchemy/GeoAlchemy2 work on SQLite:
@@ -80,16 +98,24 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - Disables GeoAlchemy2 spatial admin hooks and GIST index creation
 - Registers SQLite function stubs for PostGIS functions (ST_MakePoint, ST_SetSRID, ST_DWithin, ST_X, ST_Y, AsBinary, AsEWKB, etc.)
 - Patches `async_session_factory` in `src.models.database` and `src.services.events` so background tasks (e.g., `dispatch_webhooks`) use the test DB
-- The `setup_database` autouse fixture skips table create/drop when `TEST_DATABASE_URL` points to PostgreSQL (spatial tests use persistent data)
+- The `setup_database` autouse fixture skips table create/drop when `TEST_DATABASE_URL` points to PostgreSQL (spatial tests use persistent data); it disposes the engine's connection pool after each test to avoid asyncpg event loop affinity issues
+- `seed_users` uses get-or-create pattern so it works on persistent PostGIS databases across repeated test runs
+
+**PostGIS e2e tests** (`test_postgis_e2e.py`): Full-chain integration tests (incident → spatial lookup → rules → contacts → event). Uses `boundary-test-cases.json` test points with known expected jurisdictions. Creates its own engine per fixture invocation — asyncpg connections are bound to the event loop that created them, and pytest-asyncio creates a new loop per test, so module-level engines cause "attached to a different loop" errors.
 
 **Important**: bcrypt is pinned to 4.0.1 because passlib is incompatible with bcrypt 5.x.
 
-**Test status**: 127 unit tests pass on SQLite + 38 spatial tests pass on PostGIS (10 jurisdiction lookups, 10 nearest-water, 9 downstream traces, 9 downstream flags; 2 skipped for TC10 terminal segment). **165 total.**
+**Test status**: 137 unit tests pass on SQLite (including 8 rules engine scenarios) + 38 spatial tests on PostGIS + 9 PostGIS e2e tests. **184 total** (2 spatial skipped for TC10 terminal segment).
 
 ## Environment Variables
 - `SECRET_KEY` — **required**, used for JWT signing
 - `DATABASE_URL` — **required**, async SQLAlchemy URL (e.g., `postgresql+asyncpg://...` or `sqlite+aiosqlite:///`)
 - `TEST_DATABASE_URL` — optional, overrides DATABASE_URL for tests
+
+## Dev Users (seeded via `python -m scripts.seed_users`)
+- `admin` / `admin123` (admin role)
+- `responder` / `responder123` (responder role)
+- `viewer` / `viewer123` (viewer role)
 
 ## Workstreams
 - **WS3**: Jurisdiction Layers & Spatial Query — data pipeline, ETL scripts in `scripts/`
@@ -116,7 +142,6 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 1. **Obtain drain district + storm sewer outfall data** from Macomb County Public Works (requires manual outreach — contact public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285)
 
 ### Remaining
-- WS5 Phase 4.1: End-to-end integration test (submit incident → verify jurisdictions, contacts, and event are correct on PostGIS)
 - WS5 Phase 4.2: Pilot readiness — waiting on WS6 scenarios
 - WS3 Phase 3.2: Coordinate with WS1 on chosen layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
 - Run `scripts/benchmark_spatial.py` against PostGIS to validate performance targets

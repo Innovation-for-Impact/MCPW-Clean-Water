@@ -25,6 +25,7 @@ async def list_contacts(
             "agency": c.agency,
             "role": c.role,
             "jurisdiction_id": c.jurisdiction_id,
+            "jurisdiction_scope": c.jurisdiction_scope,
             "phone": c.phone,
             "after_hours_phone": c.after_hours_phone,
             "email": c.email,
@@ -32,6 +33,7 @@ async def list_contacts(
             "reporting_deadline": c.reporting_deadline,
             "source_url": c.source_url,
             "last_verified": c.last_verified.isoformat() if c.last_verified else None,
+            "notes": c.notes,
         }
         for c in rows
     ]
@@ -47,6 +49,7 @@ async def create_contact(
         agency=body.agency,
         role=body.role.value,
         jurisdiction_id=body.jurisdiction_id,
+        jurisdiction_scope=body.jurisdiction_scope,
         phone=body.phone,
         after_hours_phone=body.after_hours_phone,
         email=body.email,
@@ -54,6 +57,7 @@ async def create_contact(
         reporting_deadline=body.reporting_deadline,
         source_url=body.source_url,
         last_verified=body.last_verified,
+        notes=body.notes,
     )
     db.add(contact)
     await db.commit()
