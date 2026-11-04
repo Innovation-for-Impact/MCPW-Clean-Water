@@ -1,5 +1,16 @@
 # WS4 — Contacts Directory & Rules Engine: Implementation Plan
 
+## Progress Summary
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| Phase 1 — Foundations | **Complete** | Contact + Rule models with all columns, Alembic migration |
+| Phase 2 — Core Build | **Complete** | 22 contacts seeded (8 county/state/federal verified, 14 municipal need phone verification); 15 rules with priorities + legal citations |
+| Phase 3 — Integrate | **Complete** | `rules_engine.py` extracted, wired into lookup, dedup + priority sorting, unknown material/quantity handling |
+| Phase 4.1 — Verification | **In Progress** | `verify_contacts.py` script created; 14 municipal contacts need phone verification (from 2018 docs) |
+| Phase 4.2 — Scenario Tests | **Complete** | 8 scenario tests passing on SQLite |
+| Phase 4.3 — Pilot Readiness | **Blocked** | Waiting on WS6 e2e scenarios + contact phone verification |
+
 ## Goal
 
 Given the jurisdictions and spill details, return exactly who to contact — split into Response and Regulatory — with deadlines.
@@ -31,7 +42,7 @@ Every test scenario returns the correct contact list, and every contact has a so
 
 #### 1.1 Define the contact table
 
-- [ ] Create the `contacts` table (coordinate with WS5 on schema):
+- [x] Create the `contacts` table (coordinate with WS5 on schema):
   ```sql
   CREATE TABLE contacts (
       id SERIAL PRIMARY KEY,
@@ -50,7 +61,7 @@ Every test scenario returns the correct contact list, and every contact has a so
   );
   ```
 
-- [ ] Define the contact data model in SQLAlchemy (shared with WS5):
+- [x] Define the contact data model in SQLAlchemy (shared with WS5):
   ```python
   class Contact(Base):
       __tablename__ = "contacts"
@@ -71,7 +82,7 @@ Every test scenario returns the correct contact list, and every contact has a so
 
 #### 1.2 Define the rules table
 
-- [ ] Create the `rules` table:
+- [x] Create the `rules` table:
   ```sql
   CREATE TABLE rules (
       id SERIAL PRIMARY KEY,
@@ -87,7 +98,7 @@ Every test scenario returns the correct contact list, and every contact has a so
   );
   ```
 
-- [ ] Design the rule matching logic:
+- [x] Design the rule matching logic:
   - A rule matches if ALL non-null conditions are satisfied:
     - `jurisdiction_type` matches one of the returned jurisdiction layers
     - `water_body` is NULL (any) or matches the incident water body
@@ -100,7 +111,7 @@ Every test scenario returns the correct contact list, and every contact has a so
 
 #### 2.1 Research and seed contacts
 
-- [ ] **Response contacts** (who acts now):
+- [x] **Response contacts** (who acts now):
 
   | Agency | Scope | Phone | Source | Notes |
   | --- | --- | --- | --- | --- |
@@ -109,7 +120,7 @@ Every test scenario returns the correct contact list, and every contact has a so
   | Macomb County Emergency Management | County-wide | TBD | County website | Coordinates multi-jurisdiction response |
   | USCG Sector Detroit | Lake St. Clair / navigable waters | TBD | USCG website | Oil/hazmat on navigable waters |
 
-- [ ] **Regulatory contacts** (who must be notified):
+- [x] **Regulatory contacts** (who must be notified):
 
   | Agency | Scope | Phone | Source | Deadline | Notes |
   | --- | --- | --- | --- | --- | --- |
@@ -120,17 +131,17 @@ Every test scenario returns the correct contact list, and every contact has a so
   | Macomb County Health Department | County | TBD | County website | Within 24 hours | Public health impact |
   | EPA Region 5 | Federal | TBD | epa.gov | Per CERCLA | CERCLA reportable quantities |
 
-- [ ] For each contact:
+- [x] For each contact:
   - Record the phone number, after-hours phone, email, and office hours
   - Record the official source URL where the number is published
   - Record the date verified
   - Store any notes about when/how to reach them
 
-- [ ] Seed contacts into the database via a seed script (`scripts/seed_contacts.py`)
+- [x] Seed contacts into the database via a seed script (`scripts/seed_contacts.py`)
 
 #### 2.2 Research reporting rules
 
-- [ ] Document reporting triggers and deadlines for each agency:
+- [x] Document reporting triggers and deadlines for each agency:
 
   | Agency | Trigger | Deadline | Legal Citation |
   | --- | --- | --- | --- |
@@ -142,17 +153,17 @@ Every test scenario returns the correct contact list, and every contact has a so
   | County Health | Potential public health impact | Within 24 hours | County health code (cite specific) |
   | EPA Region 5 | CERCLA reportable quantity exceeded | Per CERCLA schedule | 40 CFR 302 |
 
-- [ ] For each rule, cite the specific regulation or ordinance
-- [ ] Identify CERCLA reportable quantities for common materials:
+- [x] For each rule, cite the specific regulation or ordinance
+- [x] Identify CERCLA reportable quantities for common materials:
   - Diesel/fuel oil: 25 gal (as petroleum)
   - Gasoline: 25 gal
   - Antifreeze (ethylene glycol): varies
   - Sewage: no federal RQ; state rules apply
-- [ ] Store citations in the `rules.legal_citation` column
+- [x] Store citations in the `rules.legal_citation` column
 
 #### 2.3 Build the rules table entries
 
-- [ ] Seed rules into the database via `scripts/seed_rules.py`
+- [x] Seed rules into the database via `scripts/seed_rules.py`
 - [ ] Example rules:
 
   | jurisdiction_type | water_body | material | size_threshold_gal | contact | required | deadline | priority |
@@ -168,14 +179,14 @@ Every test scenario returns the correct contact list, and every contact has a so
   | any | any | any | NULL | County Health Dept | yes | within 24 hours | 80 |
   | any | any | any | NULL | EGLE District 11 | yes | within 10 days | 90 |
 
-- [ ] Ensure municipal-level contacts use `jurisdiction_id` to match the specific municipality's DPW
+- [x] Ensure municipal-level contacts use `jurisdiction_id` to match the specific municipality's DPW
   - One contact row per municipality; one rule that matches `jurisdiction_type = municipality` and resolves to the correct contact via junction
 
 ### Phase 3 — Integrate (Weeks 6–7)
 
 #### 3.1 Write the rules engine
 
-- [ ] Implement `evaluate_rules(jurisdictions, incident)` in `src/services/rules_engine.py`
+- [x] Implement `evaluate_rules(jurisdictions, incident)` in `src/services/rules_engine.py`
   - Input:
     - `jurisdictions`: list of `{ layer, jurisdiction_id, name }` from WS3
     - `incident`: `{ material, quantity_gallons, water_body }`
@@ -198,7 +209,7 @@ Every test scenario returns the correct contact list, and every contact has a so
     ```
     Each contact includes: agency, phone, after_hours_phone, email, hours, deadline, source_url, last_verified, legal_citation
 
-- [ ] Handle edge cases:
+- [x] Handle edge cases:
   - No jurisdictions returned (point outside county) → return only federal/state contacts (NRC, EGLE)
   - Unknown material → match all material-agnostic rules; flag that material-specific rules may apply
   - Unknown quantity → match all size-agnostic rules; flag that quantity thresholds were not evaluated
@@ -206,25 +217,25 @@ Every test scenario returns the correct contact list, and every contact has a so
 
 #### 3.2 Expose to WS5
 
-- [ ] Register `evaluate_rules` as a service function callable from WS5's `/lookup` endpoint
+- [x] Register `evaluate_rules` as a service function callable from WS5's `/lookup` endpoint
   - WS5 calls: `contacts = await evaluate_rules(jurisdictions, incident)`
   - Returns response and regulatory contact lists
-- [ ] Ensure the contact data in API responses includes all fields needed by WS6 results panels
+- [x] Ensure the contact data in API responses includes all fields needed by WS6 results panels
 
 #### 3.3 Integrate with WS2 material categories
 
-- [ ] Verify that `material-categories.json` (authored by WS2) covers all materials referenced in rules
-- [ ] Rules engine matches on the category enum (`oil_fuel`, `chemical_hazmat`, `sewage`, `unknown_other`), not the raw material detail string
-- [ ] If WS2 adds new categories, rules must be updated to match
+- [x] Verify that `material-categories.json` (authored by WS2) covers all materials referenced in rules
+- [x] Rules engine matches on the category enum (`oil_fuel`, `chemical_hazmat`, `sewage`, `unknown_other`), not the raw material detail string
+- [x] If WS2 adds new categories, rules must be updated to match
 
 ### Phase 4 — Pilot (Week 8)
 
 #### 4.1 Set up contact verification
 
-- [ ] Create a verification tracking system:
+- [x] Create a verification tracking system:
   - `last_verified` date on each contact row
   - Verification checklist: call the number, confirm it reaches the right agency, update the date
-- [ ] Verify every contact before pilot use
+- [ ] Verify every contact before pilot use (14 municipal contacts need phone verification)
   - Call each phone number and confirm it's correct
   - Check each email address (send a test if possible)
   - Update `last_verified` date and `source_url` if the source page changed
@@ -234,7 +245,7 @@ Every test scenario returns the correct contact list, and every contact has a so
 
 #### 4.2 Write scenario tests
 
-- [ ] Create test scenarios aligned with WS6 end-to-end tests:
+- [x] Create test scenarios aligned with WS6 end-to-end tests:
 
   **Scenario 1: Oil sheen on Lake St. Clair**
   - Jurisdictions: Harrison Township, USCG zone, EPA region
@@ -259,15 +270,15 @@ Every test scenario returns the correct contact list, and every contact has a so
   **Scenario 5: Unknown material, unknown quantity**
   - Expected: all size-agnostic and material-agnostic rules fire; flags for "material-specific rules may apply" and "quantity thresholds not evaluated"
 
-- [ ] Implement automated tests in `tests/test_rules_engine.py`
+- [x] Implement automated tests in `tests/test_rules_engine.py` (8 scenarios passing)
   - For each scenario: mock jurisdiction input, run `evaluate_rules`, compare output to expected contact list
   - Verify sort order (priority), deadlines, and required/optional flags
   - All must pass before pilot
 
 #### 4.3 Pilot readiness
 
-- [ ] All contacts verified (every row has a `last_verified` date within the last 30 days)
-- [ ] All scenario tests pass
+- [ ] All contacts verified (blocked — 14 municipal contacts need phone verification) (every row has a `last_verified` date within the last 30 days)
+- [x] All scenario tests pass
 - [ ] Rules engine returns correct results for all WS6 end-to-end tests
 - [ ] Fix issues logged during the pilot demo
 

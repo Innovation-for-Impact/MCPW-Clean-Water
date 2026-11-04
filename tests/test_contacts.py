@@ -83,3 +83,22 @@ async def test_delete_contact_viewer_forbidden(client, auth_headers):
 async def test_list_contacts_unauthenticated(client):
     resp = await client.get("/contacts")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_contact_with_new_fields(client, auth_headers):
+    """New WS4 fields (jurisdiction_scope, notes) round-trip through API."""
+    body = {
+        **SAMPLE_CONTACT,
+        "agency": "WS4 Test Agency",
+        "jurisdiction_scope": "county",
+        "notes": "Test notes for verification",
+    }
+    create_resp = await client.post("/contacts", json=body, headers=auth_headers["admin"])
+    assert create_resp.status_code == 201
+
+    list_resp = await client.get("/contacts", headers=auth_headers["viewer"])
+    contacts = list_resp.json()
+    match = next(c for c in contacts if c["agency"] == "WS4 Test Agency")
+    assert match["jurisdiction_scope"] == "county"
+    assert match["notes"] == "Test notes for verification"

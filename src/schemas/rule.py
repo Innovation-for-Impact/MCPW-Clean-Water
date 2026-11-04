@@ -9,6 +9,8 @@ class RuleCreate(BaseModel):
     contact_id: int
     required: bool = True
     deadline: str | None = None
+    priority: int = 100
+    legal_citation: str | None = None
 
 
 class RuleResponse(BaseModel):
@@ -20,5 +22,7 @@ class RuleResponse(BaseModel):
     contact_id: int
     required: bool
     deadline: str | None = None
+    priority: int
+    legal_citation: str | None = None
 
     model_config = {"from_attributes": True}

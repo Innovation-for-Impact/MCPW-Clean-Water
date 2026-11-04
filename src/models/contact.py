@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, Integer, String
+from sqlalchemy import Date, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.database import Base
@@ -15,6 +15,7 @@ class Contact(Base):
     jurisdiction_id: Mapped[str] = mapped_column(
         String(100), ForeignKey("jurisdictions.jurisdiction_id"), nullable=False
     )
+    jurisdiction_scope: Mapped[str | None] = mapped_column(String(50))
     phone: Mapped[str] = mapped_column(String(50), nullable=False)
     after_hours_phone: Mapped[str | None] = mapped_column(String(50))
     email: Mapped[str | None] = mapped_column(String(200))
@@ -22,5 +23,6 @@ class Contact(Base):
     reporting_deadline: Mapped[str | None] = mapped_column(String(100))
     source_url: Mapped[str] = mapped_column(String(500), nullable=False)
     last_verified: Mapped[date] = mapped_column(Date, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
 
     jurisdiction: Mapped["Jurisdiction"] = relationship(back_populates="contacts")

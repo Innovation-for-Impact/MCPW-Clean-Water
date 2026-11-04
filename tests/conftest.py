@@ -83,6 +83,8 @@ SQLiteDDLCompiler.visit_create_index = _patched_visit_create_index
 # ---------------------------------------------------------------------------
 # Now import application modules
 # ---------------------------------------------------------------------------
+from sqlalchemy import select  # noqa: E402
+
 from src.api.dependencies import get_db  # noqa: E402
 from src.api.main import app  # noqa: E402
 from src.models import Base  # noqa: E402
@@ -161,6 +163,10 @@ async def setup_database():
     """
     if "sqlite" not in TEST_DATABASE_URL:
         yield
+        # Dispose pooled connections so the next test's event loop gets fresh ones.
+        # asyncpg connections are bound to the event loop that created them;
+        # pytest-asyncio creates a new loop per test, so stale connections fail.
+        await engine_test.dispose()
         return
     async with engine_test.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -186,18 +192,29 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture
 async def seed_users(db_session: AsyncSession):
-    """Create one user per role and return their details."""
+    """Create one user per role and return their details.
+
+    Handles PostGIS (persistent DB) by reusing existing test users
+    if they already exist from a previous run.
+    """
     from src.models.user import User
 
     users = {}
     for role in ("admin", "responder", "viewer"):
-        user = User(
-            username=f"test_{role}",
-            password_hash=hash_password("password123"),
-            role=role,
+        username = f"test_{role}"
+        # Check for existing user first (needed for persistent PostGIS DB)
+        result = await db_session.execute(
+            select(User).where(User.username == username)
         )
-        db_session.add(user)
-        await db_session.flush()
+        user = result.scalar_one_or_none()
+        if user is None:
+            user = User(
+                username=username,
+                password_hash=hash_password("password123"),
+                role=role,
+            )
+            db_session.add(user)
+            await db_session.flush()
         users[role] = {"id": user.id, "username": user.username, "role": role}
     await db_session.commit()
     return users

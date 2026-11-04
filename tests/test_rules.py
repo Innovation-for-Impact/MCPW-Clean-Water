@@ -91,3 +91,40 @@ async def test_delete_rule_not_found(client, auth_headers):
 async def test_list_rules_unauthenticated(client):
     resp = await client.get("/rules")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_rule_with_new_fields(client, auth_headers):
+    """New WS4 fields (priority, legal_citation) round-trip through API."""
+    contact_resp = await client.post(
+        "/contacts",
+        json={
+            "agency": "WS4 Rule Test Agency",
+            "role": "regulatory",
+            "jurisdiction_id": "county_test",
+            "phone": "555-0300",
+            "source_url": "https://example.com",
+            "last_verified": "2026-01-01",
+        },
+        headers=auth_headers["admin"],
+    )
+    contact_id = contact_resp.json()["id"]
+
+    rule_resp = await client.post(
+        "/rules",
+        json={
+            "jurisdiction_type": "county",
+            "contact_id": contact_id,
+            "priority": 42,
+            "legal_citation": "40 CFR 302.4",
+        },
+        headers=auth_headers["admin"],
+    )
+    assert rule_resp.status_code == 201
+    rule_id = rule_resp.json()["id"]
+
+    list_resp = await client.get("/rules", headers=auth_headers["viewer"])
+    rules = list_resp.json()
+    match = next(r for r in rules if r["id"] == rule_id)
+    assert match["priority"] == 42
+    assert match["legal_citation"] == "40 CFR 302.4"
