@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.schemas.jurisdiction import Jurisdiction
 from src.schemas.lookup import LookupRequest, LookupResult
 from src.services.rules_engine import evaluate_rules
-from src.services.spatial import find_nearest_water, lookup_jurisdictions, trace_downstream
+from src.services.spatial import (
+    find_nearest_water,
+    lookup_jurisdictions,
+    trace_downstream,
+)
 
 log = logging.getLogger(__name__)
 
@@ -20,8 +24,7 @@ async def run_lookup(db: AsyncSession, request: LookupRequest) -> LookupResult:
     jurisdiction_dicts = await lookup_jurisdictions(lat, lon, db=db, buffer_m=buffer_m)
 
     jurisdictions = [
-        Jurisdiction(layer=j["layer"], jurisdiction_id=j["jurisdiction_id"], name=j["name"])
-        for j in jurisdiction_dicts
+        Jurisdiction(layer=j["layer"], jurisdiction_id=j["jurisdiction_id"], name=j["name"]) for j in jurisdiction_dicts
     ]
     jurisdiction_layers = list({j["layer"] for j in jurisdiction_dicts})
 

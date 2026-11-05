@@ -6,7 +6,6 @@ These tests verify the complete lifecycle:
   - Lookup returns jurisdictions from DB
   - Incident associations (jurisdictions, contacts) are persisted
 """
-import uuid
 
 import pytest
 

@@ -12,9 +12,7 @@ class Rule(Base):
     water_body: Mapped[str | None] = mapped_column(String(50))
     material: Mapped[str | None] = mapped_column(String(50))
     size_threshold: Mapped[float | None] = mapped_column(Float)
-    contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("contacts.id"), nullable=False
-    )
+    contact_id: Mapped[int] = mapped_column(Integer, ForeignKey("contacts.id"), nullable=False)
     required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     deadline: Mapped[str | None] = mapped_column(String(100))
     priority: Mapped[int] = mapped_column(Integer, default=100, nullable=False)

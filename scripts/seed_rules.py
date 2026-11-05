@@ -7,6 +7,7 @@ sort order in response panels.
 Usage: DATABASE_URL=... python -m scripts.seed_rules
 Must run after seed_contacts.py (rules reference contact IDs).
 """
+
 import asyncio
 
 from sqlalchemy import select, text
@@ -189,8 +190,10 @@ async def main():
                 legal_citation=rule_def.get("legal_citation"),
             )
             session.add(rule)
-            print(f"  [{rule_def['priority']:3d}] {rule_def['jurisdiction_type']}"
-                  f" / {rule_def.get('material', 'any')} -> {match.agency}")
+            print(
+                f"  [{rule_def['priority']:3d}] {rule_def['jurisdiction_type']}"
+                f" / {rule_def.get('material', 'any')} -> {match.agency}"
+            )
             added += 1
 
         await session.commit()

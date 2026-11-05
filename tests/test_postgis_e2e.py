@@ -13,15 +13,16 @@ Run with:
     TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" \
     python -m pytest tests/test_postgis_e2e.py -v
 """
+
 import json
 import os
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 POSTGIS_URL = os.environ.get("TEST_DATABASE_URL", "")
 pytestmark = pytest.mark.skipif(
@@ -29,9 +30,7 @@ pytestmark = pytest.mark.skipif(
     reason="PostGIS e2e tests require TEST_DATABASE_URL pointing to PostGIS",
 )
 
-BOUNDARY_TEST_CASES = json.loads(
-    (Path(__file__).parent / "boundary-test-cases.json").read_text()
-)
+BOUNDARY_TEST_CASES = json.loads((Path(__file__).parent / "boundary-test-cases.json").read_text())
 
 # Use TC1 (Downtown Mount Clemens) as the default — well-understood point
 TC1 = next(tc for tc in BOUNDARY_TEST_CASES if tc["id"] == 1)
@@ -103,27 +102,35 @@ async def postgis_seed():
         await session.flush()
 
         # Get IDs for the contacts we just created
-        result = await session.execute(
-            select(Contact.id, Contact.agency).where(Contact.agency.like("E2E %"))
-        )
+        result = await session.execute(select(Contact.id, Contact.agency).where(Contact.agency.like("E2E %")))
         contact_map = {agency: cid for cid, agency in result.fetchall()}
         contact_ids = list(contact_map.values())
 
         rule_defs = [
-            {"jurisdiction_type": "county", "material": "oil_fuel",
-             "contact_id": contact_map["E2E Test Response Agency"], "required": True},
-            {"jurisdiction_type": "county", "material": "oil_fuel",
-             "contact_id": contact_map["E2E Test Regulatory Agency"], "required": True},
-            {"jurisdiction_type": "municipality", "material": None,
-             "contact_id": contact_map["E2E Mt Clemens DPW"], "required": True},
+            {
+                "jurisdiction_type": "county",
+                "material": "oil_fuel",
+                "contact_id": contact_map["E2E Test Response Agency"],
+                "required": True,
+            },
+            {
+                "jurisdiction_type": "county",
+                "material": "oil_fuel",
+                "contact_id": contact_map["E2E Test Regulatory Agency"],
+                "required": True,
+            },
+            {
+                "jurisdiction_type": "municipality",
+                "material": None,
+                "contact_id": contact_map["E2E Mt Clemens DPW"],
+                "required": True,
+            },
         ]
         for rdef in rule_defs:
             session.add(Rule(**rdef))
         await session.flush()
 
-        result = await session.execute(
-            select(Rule.id).where(Rule.contact_id.in_(contact_ids))
-        )
+        result = await session.execute(select(Rule.id).where(Rule.contact_id.in_(contact_ids)))
         rule_ids = [row[0] for row in result.fetchall()]
 
         await session.commit()
@@ -150,14 +157,18 @@ async def postgis_seed():
 def _incident_body(tc):
     """Build an IncidentCreate-compatible dict for a boundary test case."""
     return {
-        "location": {"lat": tc["lat"], "lon": tc["lon"], "address": f"E2E test - {tc['description']}"},
+        "location": {
+            "lat": tc["lat"],
+            "lon": tc["lon"],
+            "address": f"E2E test - {tc['description']}",
+        },
         "water_body": "clinton_river",
         "material": "oil_fuel",
         "material_detail": "diesel",
         "quantity": 50.0,
         "quantity_unit": "gal",
         "quantity_gallons": 50.0,
-        "time_observed": datetime.now(timezone.utc).isoformat(),
+        "time_observed": datetime.now(UTC).isoformat(),
         "reporter_name": "E2E Test Reporter",
         "reporter_phone": "555-9999",
         "notes": f"PostGIS e2e test - TC{tc['id']}",
@@ -193,9 +204,7 @@ async def test_incident_resolves_jurisdictions(client, auth_headers, postgis_see
     resolved_ids = {j["jurisdiction_id"] for j in payload["jurisdictions"]}
     expected_ids = {j["jurisdiction_id"] for j in TC1["expected_jurisdictions"]}
 
-    assert resolved_ids == expected_ids, (
-        f"Expected jurisdictions {expected_ids}, got {resolved_ids}"
-    )
+    assert resolved_ids == expected_ids, f"Expected jurisdictions {expected_ids}, got {resolved_ids}"
 
 
 @pytest.mark.asyncio
@@ -283,21 +292,18 @@ async def test_incident_persists_jurisdiction_associations(client, auth_headers,
 
     # Query the join table directly with a fresh engine/session
     from src.models.association import incident_jurisdictions
+
     engine, factory = _make_session_factory()
     async with factory() as session:
         result = await session.execute(
-            select(incident_jurisdictions.c.jurisdiction_id).where(
-                incident_jurisdictions.c.incident_id == incident_id
-            )
+            select(incident_jurisdictions.c.jurisdiction_id).where(incident_jurisdictions.c.incident_id == incident_id)
         )
         stored_ids = {row[0] for row in result.fetchall()}
     await engine.dispose()
 
     expected_ids = {j["jurisdiction_id"] for j in TC1["expected_jurisdictions"]}
 
-    assert stored_ids == expected_ids, (
-        f"Join table has {stored_ids}, expected {expected_ids}"
-    )
+    assert stored_ids == expected_ids, f"Join table has {stored_ids}, expected {expected_ids}"
 
 
 @pytest.mark.asyncio
@@ -312,18 +318,15 @@ async def test_incident_persists_contact_associations(client, auth_headers, post
     incident_id = resp.json()["id"]
 
     from src.models.association import IncidentContact
+
     engine, factory = _make_session_factory()
     async with factory() as session:
-        result = await session.execute(
-            select(IncidentContact).where(IncidentContact.incident_id == incident_id)
-        )
+        result = await session.execute(select(IncidentContact).where(IncidentContact.incident_id == incident_id))
         associations = result.scalars().all()
     await engine.dispose()
 
     # Should have 3 contacts: 2 county + 1 municipality
-    assert len(associations) == 3, (
-        f"Expected 3 contact associations, got {len(associations)}"
-    )
+    assert len(associations) == 3, f"Expected 3 contact associations, got {len(associations)}"
 
     roles = {a.role for a in associations}
     assert roles == {"response", "regulatory"}

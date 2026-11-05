@@ -10,6 +10,7 @@ clipping and reprojection.
 
 Requires: fiona
 """
+
 import argparse
 import logging
 from pathlib import Path
@@ -46,7 +47,7 @@ def inspect_file(path: Path, layer: str | None = None):
 
     try:
         with fiona.open(**open_kwargs) as src:
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"File:     {path}")
             if layer:
                 print(f"Layer:    {layer}")
@@ -66,14 +67,14 @@ def inspect_file(path: Path, layer: str | None = None):
             # Sample first record
             for i, feature in enumerate(src):
                 if i == 0:
-                    print(f"Sample record properties:")
+                    print("Sample record properties:")
                     for k, v in list(feature["properties"].items())[:10]:
                         print(f"  {k}: {v}")
                     geom = feature["geometry"]
                     print(f"  geometry type: {geom['type']}")
                 break
 
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
 
     except Exception as e:
         log.error(f"Failed to inspect {path}: {e}")
@@ -82,12 +83,14 @@ def inspect_file(path: Path, layer: str | None = None):
 def main():
     parser = argparse.ArgumentParser(description="Inspect downloaded GIS layers")
     parser.add_argument(
-        "--dir", "-d",
+        "--dir",
+        "-d",
         default=str(DATA_RAW),
         help=f"Directory to scan (default: {DATA_RAW})",
     )
     parser.add_argument(
-        "--layer", "-l",
+        "--layer",
+        "-l",
         default=None,
         help="Specific layer name within a GDB file",
     )

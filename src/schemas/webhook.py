@@ -22,16 +22,14 @@ class WebhookCreate(BaseModel):
         # pointing to private/internal addresses (e.g. metadata.google.internal)
         try:
             resolved = socket.getaddrinfo(hostname, None)
-        except socket.gaierror:
-            raise ValueError(f"Could not resolve hostname: {hostname}")
+        except socket.gaierror as exc:
+            raise ValueError(f"Could not resolve hostname: {hostname}") from exc
 
-        for family, _type, _proto, _canonname, sockaddr in resolved:
+        for _family, _type, _proto, _canonname, sockaddr in resolved:
             try:
                 addr = ipaddress.ip_address(sockaddr[0])
                 if addr.is_private or addr.is_loopback or addr.is_reserved or addr.is_link_local:
-                    raise ValueError(
-                        "URL must not resolve to a private, loopback, reserved, or link-local address"
-                    )
+                    raise ValueError("URL must not resolve to a private, loopback, reserved, or link-local address")
             except ValueError as e:
                 if "does not appear to be" not in str(e):
                     raise

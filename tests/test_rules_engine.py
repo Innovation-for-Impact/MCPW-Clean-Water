@@ -4,6 +4,7 @@ Tests evaluate_rules against seeded contacts and rules to verify
 correct contact lists and priority ordering for each scenario.
 Runs on SQLite (no PostGIS needed).
 """
+
 from datetime import date
 
 import pytest
@@ -14,10 +15,10 @@ from src.models.contact import Contact
 from src.models.rule import Rule
 from src.services.rules_engine import evaluate_rules
 
-
 # ---------------------------------------------------------------------------
 # Fixtures: seed contacts and rules for scenario testing
 # ---------------------------------------------------------------------------
+
 
 @pytest_asyncio.fixture
 async def seed_scenario_data(db_session: AsyncSession):
@@ -160,45 +161,111 @@ async def seed_scenario_data(db_session: AsyncSession):
 
     rules = [
         # County response — hotline (priority 1)
-        Rule(jurisdiction_type="county", contact_id=cmap["Macomb County Public Works — Emergency Hotline"],
-             required=True, deadline="Immediate", priority=1),
+        Rule(
+            jurisdiction_type="county",
+            contact_id=cmap["Macomb County Public Works — Emergency Hotline"],
+            required=True,
+            deadline="Immediate",
+            priority=1,
+        ),
         # Municipal DPW (priority 10) — multiple rules for name variants
-        Rule(jurisdiction_type="municipality", contact_id=cmap["Harrison Township — DPW"],
-             required=True, deadline="Immediate", priority=10),
-        Rule(jurisdiction_type="municipality", contact_id=cmap["City of Mt Clemens — DPW"],
-             required=True, deadline="Immediate", priority=10),
-        Rule(jurisdiction_type="municipality", contact_id=cmap["City of Sterling Heights — Public Works"],
-             required=True, deadline="Immediate", priority=10),
-        Rule(jurisdiction_type="municipality", contact_id=cmap["Clinton Township — Public Services"],
-             required=True, deadline="Immediate", priority=10),
+        Rule(
+            jurisdiction_type="municipality",
+            contact_id=cmap["Harrison Township — DPW"],
+            required=True,
+            deadline="Immediate",
+            priority=10,
+        ),
+        Rule(
+            jurisdiction_type="municipality",
+            contact_id=cmap["City of Mt Clemens — DPW"],
+            required=True,
+            deadline="Immediate",
+            priority=10,
+        ),
+        Rule(
+            jurisdiction_type="municipality",
+            contact_id=cmap["City of Sterling Heights — Public Works"],
+            required=True,
+            deadline="Immediate",
+            priority=10,
+        ),
+        Rule(
+            jurisdiction_type="municipality",
+            contact_id=cmap["Clinton Township — Public Services"],
+            required=True,
+            deadline="Immediate",
+            priority=10,
+        ),
         # USCG for shoreline (priority 15)
-        Rule(jurisdiction_type="shoreline", contact_id=cmap["US Coast Guard — Sector Detroit"],
-             required=True, deadline="Immediate", priority=15),
+        Rule(
+            jurisdiction_type="shoreline",
+            contact_id=cmap["US Coast Guard — Sector Detroit"],
+            required=True,
+            deadline="Immediate",
+            priority=15,
+        ),
         # EGLE PEAS — state (priority 50)
-        Rule(jurisdiction_type="county", contact_id=cmap["Michigan EGLE — PEAS"],
-             required=True, deadline="Immediate", priority=50),
+        Rule(
+            jurisdiction_type="county",
+            contact_id=cmap["Michigan EGLE — PEAS"],
+            required=True,
+            deadline="Immediate",
+            priority=50,
+        ),
         # NRC — oil on shoreline (priority 51)
-        Rule(jurisdiction_type="shoreline", material="oil_fuel",
-             contact_id=cmap["National Response Center"],
-             required=True, deadline="Immediate", priority=51),
+        Rule(
+            jurisdiction_type="shoreline",
+            material="oil_fuel",
+            contact_id=cmap["National Response Center"],
+            required=True,
+            deadline="Immediate",
+            priority=51,
+        ),
         # NRC — hazmat on shoreline (priority 51)
-        Rule(jurisdiction_type="shoreline", material="chemical_hazmat",
-             contact_id=cmap["National Response Center"],
-             required=True, deadline="Immediate", priority=51),
+        Rule(
+            jurisdiction_type="shoreline",
+            material="chemical_hazmat",
+            contact_id=cmap["National Response Center"],
+            required=True,
+            deadline="Immediate",
+            priority=51,
+        ),
         # EPA — oil >= 25 gal (priority 60)
-        Rule(jurisdiction_type="county", material="oil_fuel", size_threshold=25.0,
-             contact_id=cmap["EPA Region 5"],
-             required=True, deadline="Per CERCLA", priority=60),
+        Rule(
+            jurisdiction_type="county",
+            material="oil_fuel",
+            size_threshold=25.0,
+            contact_id=cmap["EPA Region 5"],
+            required=True,
+            deadline="Per CERCLA",
+            priority=60,
+        ),
         # EPA — any hazmat (priority 60)
-        Rule(jurisdiction_type="county", material="chemical_hazmat",
-             contact_id=cmap["EPA Region 5"],
-             required=True, deadline="Per CERCLA", priority=60),
+        Rule(
+            jurisdiction_type="county",
+            material="chemical_hazmat",
+            contact_id=cmap["EPA Region 5"],
+            required=True,
+            deadline="Per CERCLA",
+            priority=60,
+        ),
         # Health Dept (priority 70)
-        Rule(jurisdiction_type="county", contact_id=cmap["Macomb County Health Department"],
-             required=True, deadline="24 hours", priority=70),
+        Rule(
+            jurisdiction_type="county",
+            contact_id=cmap["Macomb County Health Department"],
+            required=True,
+            deadline="24 hours",
+            priority=70,
+        ),
         # EGLE District 11 follow-up (priority 90)
-        Rule(jurisdiction_type="county", contact_id=cmap["Michigan EGLE — District 11"],
-             required=True, deadline="Within 10 days", priority=90),
+        Rule(
+            jurisdiction_type="county",
+            contact_id=cmap["Michigan EGLE — District 11"],
+            required=True,
+            deadline="Within 10 days",
+            priority=90,
+        ),
     ]
 
     for r in rules:
@@ -210,6 +277,7 @@ async def seed_scenario_data(db_session: AsyncSession):
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def agencies(contacts):
     """Extract agency names from a contact list."""
     return [c.agency for c in contacts]
@@ -218,6 +286,7 @@ def agencies(contacts):
 # ---------------------------------------------------------------------------
 # Scenario 1: Oil sheen on Lake St. Clair (Harrison Twp shoreline)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_scenario_oil_on_lake_st_clair(db_session, seed_scenario_data):
@@ -229,7 +298,10 @@ async def test_scenario_oil_on_lake_st_clair(db_session, seed_scenario_data):
     """
     layers = ["shoreline", "municipality", "county"]
     resp, reg = await evaluate_rules(
-        layers, db=db_session, material="oil_fuel", quantity_gallons=50.0,
+        layers,
+        db=db_session,
+        material="oil_fuel",
+        quantity_gallons=50.0,
     )
 
     resp_names = agencies(resp)
@@ -257,6 +329,7 @@ async def test_scenario_oil_on_lake_st_clair(db_session, seed_scenario_data):
 # Scenario 2: Chemical in Clinton River (Mt. Clemens)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scenario_chemical_in_clinton_river(db_session, seed_scenario_data):
     """Chemical hazmat release in Mt. Clemens near the Clinton River.
@@ -266,7 +339,10 @@ async def test_scenario_chemical_in_clinton_river(db_session, seed_scenario_data
     """
     layers = ["municipality", "subwatershed", "county"]
     resp, reg = await evaluate_rules(
-        layers, db=db_session, material="chemical_hazmat", quantity_gallons=10.0,
+        layers,
+        db=db_session,
+        material="chemical_hazmat",
+        quantity_gallons=10.0,
     )
 
     resp_names = agencies(resp)
@@ -289,6 +365,7 @@ async def test_scenario_chemical_in_clinton_river(db_session, seed_scenario_data
 # Scenario 3: Sewage discharge from storm drain (Sterling Heights)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scenario_sewage_storm_drain(db_session, seed_scenario_data):
     """Sewage discharge in Sterling Heights.
@@ -298,7 +375,10 @@ async def test_scenario_sewage_storm_drain(db_session, seed_scenario_data):
     """
     layers = ["municipality", "county"]
     resp, reg = await evaluate_rules(
-        layers, db=db_session, material="sewage", quantity_gallons=100.0,
+        layers,
+        db=db_session,
+        material="sewage",
+        quantity_gallons=100.0,
     )
 
     resp_names = agencies(resp)
@@ -322,6 +402,7 @@ async def test_scenario_sewage_storm_drain(db_session, seed_scenario_data):
 # Scenario 4: Small oil spill (below EPA threshold)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scenario_small_oil_no_epa(db_session, seed_scenario_data):
     """Small oil spill (5 gal) in county — below 25 gal EPA threshold.
@@ -330,7 +411,10 @@ async def test_scenario_small_oil_no_epa(db_session, seed_scenario_data):
     """
     layers = ["municipality", "county"]
     resp, reg = await evaluate_rules(
-        layers, db=db_session, material="oil_fuel", quantity_gallons=5.0,
+        layers,
+        db=db_session,
+        material="oil_fuel",
+        quantity_gallons=5.0,
     )
 
     reg_names = agencies(reg)
@@ -344,12 +428,16 @@ async def test_scenario_small_oil_no_epa(db_session, seed_scenario_data):
 # Scenario 5: Unknown material, unknown quantity
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scenario_unknown_material_and_quantity(db_session, seed_scenario_data):
     """Unknown material and no quantity — only material/size-agnostic rules fire."""
     layers = ["municipality", "county"]
     resp, reg = await evaluate_rules(
-        layers, db=db_session, material=None, quantity_gallons=None,
+        layers,
+        db=db_session,
+        material=None,
+        quantity_gallons=None,
     )
 
     resp_names = agencies(resp)
@@ -370,6 +458,7 @@ async def test_scenario_unknown_material_and_quantity(db_session, seed_scenario_
 # Scenario 6: Empty jurisdiction list → no contacts
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scenario_no_jurisdictions(db_session, seed_scenario_data):
     """Point outside all jurisdictions → no contacts returned."""
@@ -382,12 +471,16 @@ async def test_scenario_no_jurisdictions(db_session, seed_scenario_data):
 # Scenario 7: Deduplication — same contact matched by multiple rules
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scenario_deduplication(db_session, seed_scenario_data):
     """EGLE PEAS should appear only once even if county appears in multiple layers."""
     layers = ["county"]
     resp, reg = await evaluate_rules(
-        layers, db=db_session, material="oil_fuel", quantity_gallons=50.0,
+        layers,
+        db=db_session,
+        material="oil_fuel",
+        quantity_gallons=50.0,
     )
 
     # Count occurrences of EGLE PEAS — should be exactly 1
@@ -399,12 +492,16 @@ async def test_scenario_deduplication(db_session, seed_scenario_data):
 # Scenario 8: Priority ordering is correct
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scenario_priority_ordering(db_session, seed_scenario_data):
     """Response contacts should be ordered by priority (lower number first)."""
     layers = ["shoreline", "municipality", "county"]
     resp, reg = await evaluate_rules(
-        layers, db=db_session, material="oil_fuel", quantity_gallons=50.0,
+        layers,
+        db=db_session,
+        material="oil_fuel",
+        quantity_gallons=50.0,
     )
 
     # Response priorities: hotline (1) < municipal DPW (10) < USCG (15)

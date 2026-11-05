@@ -47,10 +47,7 @@ class AccelaAdapter:
         return {
             "type": {"value": ACCELA_RECORD_TYPE},
             "name": f"Spill Incident {event.incident_id}",
-            "description": (
-                f"{event.material.value} spill at "
-                f"({event.location.lat}, {event.location.lon})"
-            ),
+            "description": (f"{event.material.value} spill at ({event.location.lat}, {event.location.lon})"),
             "status": {"value": event.status.value},
             "customFields": [
                 {"id": "material", "value": event.material.value},
@@ -109,9 +106,7 @@ class AccelaAdapter:
                     },
                 )
                 if resp.status_code not in (200, 201):
-                    logger.error(
-                        "Accela record creation failed: %s %s", resp.status_code, resp.text
-                    )
+                    logger.error("Accela record creation failed: %s %s", resp.status_code, resp.text)
                     raise AccelaError(f"Record creation failed: {resp.status_code}")
 
                 result = resp.json()

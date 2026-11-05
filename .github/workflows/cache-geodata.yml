@@ -1,0 +1,33 @@
+name: Cache GIS Data
+
+# Run once manually to upload data/raw/ into the Actions cache.
+# After this succeeds, the spatial-tests job in ci.yml can restore it.
+#
+# Usage:
+#   1. Ensure data/raw/ exists locally (~260MB)
+#   2. Push this workflow to the repo
+#   3. Run: gh workflow run cache-geodata.yml
+#
+# The cache key is "geodata-v1". Bump the version to invalidate.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if data exists
+        run: |
+          if [ ! -d data/raw ]; then
+            echo "::error::data/raw/ directory not found. This workflow must run on a machine with GIS data checked out."
+            exit 1
+          fi
+
+      - name: Cache GIS data
+        uses: actions/cache/save@v4
+        with:
+          path: data/raw
+          key: geodata-v1

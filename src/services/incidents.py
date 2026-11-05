@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from geoalchemy2.functions import ST_MakePoint, ST_SetSRID
 from sqlalchemy import select
@@ -40,8 +40,8 @@ async def create_incident(
         notes=body.notes,
         buffer_radius_m=body.buffer_radius_m,
         status=IncidentStatus.open.value,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db.add(incident)
     await db.flush()
@@ -69,15 +69,11 @@ async def create_incident(
     if all_contacts:
         contact_keys = [(c.jurisdiction_id, c.agency) for c in all_contacts]
         from sqlalchemy import tuple_
+
         contact_rows_result = await db.execute(
-            select(ContactModel).where(
-                tuple_(ContactModel.jurisdiction_id, ContactModel.agency).in_(contact_keys)
-            )
+            select(ContactModel).where(tuple_(ContactModel.jurisdiction_id, ContactModel.agency).in_(contact_keys))
         )
-        contact_rows_by_key = {
-            (cr.jurisdiction_id, cr.agency): cr
-            for cr in contact_rows_result.scalars().all()
-        }
+        contact_rows_by_key = {(cr.jurisdiction_id, cr.agency): cr for cr in contact_rows_result.scalars().all()}
         for c in all_contacts:
             contact_row = contact_rows_by_key.get((c.jurisdiction_id, c.agency))
             if contact_row:

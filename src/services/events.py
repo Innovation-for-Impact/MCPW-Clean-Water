@@ -4,7 +4,7 @@ import logging
 import socket
 import urllib.parse
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
@@ -26,7 +26,7 @@ def build_event(
         id=uuid.uuid4(),
         event_type=event_type,
         event_version="1.0",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         incident_id=incident_id,
         payload=payload,
     )
@@ -90,7 +90,8 @@ async def dispatch_webhooks(event_data: dict) -> None:
                 return
             try:
                 await client.post(
-                    pinned_url, json=event_data,
+                    pinned_url,
+                    json=event_data,
                     headers={"Host": original_host},
                 )
             except httpx.HTTPError:
@@ -101,7 +102,4 @@ async def dispatch_webhooks(event_data: dict) -> None:
                     exc_info=True,
                 )
 
-        await asyncio.gather(*[
-            _post(w.url, urllib.parse.urlparse(w.url).hostname or "")
-            for w in webhooks
-        ])
+        await asyncio.gather(*[_post(w.url, urllib.parse.urlparse(w.url).hostname or "") for w in webhooks])

@@ -10,10 +10,11 @@ may have changed, but main agency lines are typically stable.
 
 Usage: DATABASE_URL=... python -m scripts.seed_contacts
 """
+
 import asyncio
 from datetime import date
 
-from sqlalchemy import select, text
+from sqlalchemy import text
 
 from src.models.contact import Contact
 from src.models.database import async_session_factory, engine
@@ -90,7 +91,10 @@ SEED_CONTACTS = [
         "reporting_deadline": "Written follow-up within 10 days",
         "source_url": "https://www.michigan.gov/egle/about/organization/water-resources-division",
         "last_verified": NEEDS_VERIFICATION,
-        "notes": "Dennis Ryan, Senior Environmental Engineer. Follow-up report after PEAS notification. Verify name/number still current.",
+        "notes": (
+            "Dennis Ryan, Senior Environmental Engineer. "
+            "Follow-up report after PEAS notification. Verify name/number still current."
+        ),
     },
     # ── Federal — shoreline / navigable waters ───────────────────────────
     {

@@ -82,9 +82,9 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
   **Incident**
   ```python
   class IncidentCreate(BaseModel):
-      location: Location           # lat, lon, address
-      water_body: WaterBodyType    # enum: lake_st_clair, clinton_river, tributary, county_drain, storm_sewer, unknown
-      material: MaterialType       # enum: oil_fuel, chemical_hazmat, sewage, unknown_other
+      location: Location  # lat, lon, address
+      water_body: WaterBodyType  # enum: lake_st_clair, clinton_river, tributary, county_drain, storm_sewer, unknown
+      material: MaterialType  # enum: oil_fuel, chemical_hazmat, sewage, unknown_other
       material_detail: str | None  # e.g., "diesel", "antifreeze"
       quantity: float | None
       quantity_unit: QuantityUnit  # enum: gal, bbl, L, lb
@@ -94,6 +94,7 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
       reporter_phone: str
       notes: str | None
       buffer_radius_m: float | None
+
 
   class Incident(IncidentCreate):
       id: uuid.UUID
@@ -113,8 +114,8 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
   **Jurisdiction**
   ```python
   class Jurisdiction(BaseModel):
-      layer: str           # e.g., "municipality", "drain_district"
-      jurisdiction_id: str # stable ID from WS3
+      layer: str  # e.g., "municipality", "drain_district"
+      jurisdiction_id: str  # stable ID from WS3
       name: str
   ```
 
@@ -122,7 +123,7 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
   ```python
   class Contact(BaseModel):
       agency: str
-      role: ContactRole       # enum: response, regulatory
+      role: ContactRole  # enum: response, regulatory
       jurisdiction_id: str
       phone: str
       after_hours_phone: str | None
@@ -141,6 +142,7 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
       quantity_gallons: float | None
       buffer_radius_m: float | None
 
+
   class LookupResult(BaseModel):
       jurisdictions: list[Jurisdiction]
       downstream_path: list[str]
@@ -152,8 +154,8 @@ All endpoints are deployed with docs, the frontend can run a full lookup end to 
   ```python
   class IncidentEvent(BaseModel):
       event_id: uuid.UUID
-      event_type: str          # "incident.created", "incident.updated"
-      event_version: str       # "1.0"
+      event_type: str  # "incident.created", "incident.updated"
+      event_version: str  # "1.0"
       timestamp: datetime
       incident_id: uuid.UUID
       location: Location

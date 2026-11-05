@@ -1,4 +1,5 @@
 """Unit tests for POST /incidents and GET /incidents/{id}."""
+
 import uuid
 
 import pytest

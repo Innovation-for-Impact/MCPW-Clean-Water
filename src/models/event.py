@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -11,13 +11,11 @@ from src.models.database import Base
 class Event(Base):
     __tablename__ = "events"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)
     event_version: Mapped[str] = mapped_column(String(10), default="1.0", nullable=False)
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     incident_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False

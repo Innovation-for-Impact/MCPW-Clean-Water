@@ -66,7 +66,7 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 4. Models (`src/models/`) define PostGIS geometry columns via GeoAlchemy2
 
 ### Key Architectural Patterns
-- **Dependency injection**: `src/api/dependencies.py` provides `get_db` (async session) and `RequireRole` (RBAC decorator accepting role strings)
+- **Dependency injection**: `src/api/dependencies.py` provides `get_db` (async session) and `RequireRole` (hierarchical RBAC: admin > responder > viewer — e.g., `RequireRole("viewer")` grants access to all three roles)
 - **App entry point**: `src/api/main.py` — FastAPI app with CORS and router registration
 - **Database config**: `src/models/database.py` — reads `DATABASE_URL` env var, creates async engine and session factory. `Base` (DeclarativeBase) lives here.
 - **Auth flow**: `src/services/auth.py` handles JWT creation/validation and password hashing. Requires `SECRET_KEY` env var.
@@ -111,6 +111,10 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - `SECRET_KEY` — **required**, used for JWT signing
 - `DATABASE_URL` — **required**, async SQLAlchemy URL (e.g., `postgresql+asyncpg://...` or `sqlite+aiosqlite:///`)
 - `TEST_DATABASE_URL` — optional, overrides DATABASE_URL for tests
+- `LOG_LEVEL` — optional, default `INFO` (DEBUG, INFO, WARNING, ERROR)
+- `LOG_FORMAT` — optional, default `text` (set to `json` for structured JSON logs)
+- `CORS_ORIGINS` — optional, comma-separated allowed origins (defaults to `localhost:3000,localhost:5173`)
+- `ENVIRONMENT` — optional, set to `production` to block dev seed scripts from running
 
 ## Dev Users (seeded via `python -m scripts.seed_users`)
 - `admin` / `admin123` (admin role)
@@ -135,13 +139,62 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - NHD does not include Lake St. Clair as a flowline — the Clinton River terminates at "Clinton River Spillway" near the lake.
 - TC10 `trace_downstream` and `downstream_flags` tests skip because the nearest segment is terminal (no downstream path).
 - SQLite `ST_DWithin` stub in `conftest.py` always returns `True` — spatial filtering bugs won't be caught by unit tests, only by PostGIS spatial tests.
+- `RequestLoggingMiddleware` uses Starlette's `BaseHTTPMiddleware`, which creates a task per request and prevents streaming responses. Fine at current scale; revisit if adding SSE or large file downloads.
+- `openapi.json` is committed for reference but not CI-verified (Pydantic version differences cause schema drift). Regenerate with: `SECRET_KEY=x DATABASE_URL="sqlite+aiosqlite:///" python -c "from src.api.main import app; import json; print(json.dumps(app.openapi(), indent=4))" > openapi.json`
 
 ## Outstanding Work
 
-### Blocked — External Dependency
-1. **Obtain drain district + storm sewer outfall data** from Macomb County Public Works (requires manual outreach — contact public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285)
+### TODO — Can Do Now
+1. **Add rate limiting to `/auth/login`** — no brute-force protection currently. Add `slowapi` or similar before pilot.
+2. **Refactor `contacts.py` and `rules.py` routes** — currently raw ORM in handlers with hand-built dicts. Move to service layer + `response_model` for consistency with other endpoints.
 
-### Remaining
-- WS5 Phase 4.2: Pilot readiness — waiting on WS6 scenarios
-- WS3 Phase 3.2: Coordinate with WS1 on chosen layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
-- Run `scripts/benchmark_spatial.py` against PostGIS to validate performance targets
+### Blocked — Waiting on External Teams
+3. **WS5 Phase 4.2: Pilot readiness** — waiting on WS6 team to deliver scenario definitions for end-to-end validation.
+4. **WS3 Phase 3.2: Layer format coordination** — GeoJSON endpoints are built. Waiting on WS1 to confirm if they need ArcGIS feature layers or vector tiles instead.
+5. **Obtain drain district + storm sewer outfall data** — requires manual outreach to Macomb County Public Works (public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285). Once received, add to data pipeline and load into PostGIS.
+
+### Done (This Branch)
+- [x] WS4 rules engine + contact directory + seed data (35 rules, 26 contacts)
+- [x] CI pipeline (lint, unit tests, spatial tests)
+- [x] Spatial benchmark — all targets PASS
+- [x] Structured logging + request middleware
+- [x] Docker hardening (non-root user, required secrets, resource limits)
+- [x] Ruff linting enforced across codebase
+- [x] RBAC hierarchy fix (admin > responder > viewer)
+- [x] CORS origins configurable via env var
+- [x] Production guard on seed scripts
+- [x] openapi.json CI sync check
+
+## Breaking API Changes
+- **`POST /lookup` — `material` field is now optional** (was required). Clients that omitted `material` previously got 422; now they get results filtered to material-agnostic rules only. Update frontend callers if they relied on the 422 for validation.
+
+## CI
+
+GitHub Actions workflows in `.github/workflows/`:
+- **ci.yml** — three jobs:
+  - **lint**: ruff format + lint (required check)
+  - **unit-tests**: 137 SQLite-based tests on every push/PR to `main`
+  - **spatial-tests**: PostGIS integration + benchmark, manual `workflow_dispatch` only (requires geodata cache)
+- **cache-geodata.yml** — one-time `workflow_dispatch` to upload `data/raw/` (~260MB) into Actions cache for spatial-tests
+
+## Linting
+
+`ruff.toml` configures ruff for Python 3.11, line-length 120. Run `ruff check .` and `ruff format .` locally.
+
+## Logging
+
+- `src/logging_config.py` — structured logging config, controlled by `LOG_LEVEL` and `LOG_FORMAT` env vars
+- `src/api/middleware.py` — `RequestLoggingMiddleware` logs method, path, status, duration, request_id on every request
+- Set `LOG_FORMAT=json` for structured JSON output in production
+
+## Docker
+
+- `Dockerfile` — non-root `appuser`, slim image, `.dockerignore` excludes tests/data/docs
+- `docker-compose.yml` — requires `POSTGRES_PASSWORD` and `SECRET_KEY` via `.env` (no hardcoded defaults for secrets), resource limits (1G db, 512M api), restart policies
+
+## Benchmark Results (2026-11-04)
+
+All spatial query performance targets **PASS** (run via `scripts/benchmark_spatial.py`):
+- `lookup_jurisdictions` (100 calls): median=4.3ms, p95=9.1ms — target <100ms/<200ms
+- `find_nearest_water` (100 calls): median=1.0ms, p95=2.5ms
+- `trace_downstream` (50 calls): median=0.6ms, p95=2.1ms — target <500ms; longest path 42 segments

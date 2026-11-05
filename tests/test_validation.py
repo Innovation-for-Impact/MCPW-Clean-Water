@@ -1,6 +1,6 @@
 """Tests for input validation and edge cases across endpoints."""
-import pytest
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Location validation (lat/lon bounds)
@@ -138,9 +138,7 @@ async def test_events_invalid_since_format(client, auth_headers):
 
 @pytest.mark.asyncio
 async def test_events_invalid_incident_id(client, auth_headers):
-    resp = await client.get(
-        "/events?incident_id=not-a-uuid", headers=auth_headers["viewer"]
-    )
+    resp = await client.get("/events?incident_id=not-a-uuid", headers=auth_headers["viewer"])
     assert resp.status_code == 422
 
 

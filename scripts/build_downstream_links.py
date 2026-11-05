@@ -15,11 +15,11 @@ for each segment already loaded in the database.
 
 Requires: fiona (or dbfread for .dbf files)
 """
+
 import argparse
 import asyncio
 import logging
 import sys
-from pathlib import Path
 
 from sqlalchemy import text
 
@@ -61,7 +61,7 @@ def read_flow_table_fiona(input_path: str, layer: str | None = None, loaded_comi
 
     with fiona.open(**open_kwargs) as src:
         log.info(f"Reading flow table: {len(src)} records")
-        fields = list(src.schema['properties'].keys())
+        fields = list(src.schema["properties"].keys())
         log.info(f"Fields: {fields[:20]}")
 
         # Detect format: NHDPlusFlow has FromNHDPID/ToNHDPID
@@ -135,10 +135,12 @@ def _init_db():
     if _session_factory is not None:
         return
     import os
+
     if "DATABASE_URL" not in os.environ:
         log.error("DATABASE_URL environment variable is required")
         sys.exit(1)
     from src.models.database import async_session_factory, engine
+
     _session_factory = async_session_factory
     _engine = engine
 
@@ -192,7 +194,8 @@ async def flag_beaches_and_intakes():
         # Propagate flags upstream: any segment whose downstream path
         # includes a flagged segment should also be flagged
         if KNOWN_BEACHES:
-            result = await session.execute(text("""
+            result = await session.execute(
+                text("""
                 WITH RECURSIVE upstream AS (
                     SELECT nhd_comid FROM waterways WHERE has_beach_downstream = true
                     UNION
@@ -201,11 +204,13 @@ async def flag_beaches_and_intakes():
                 )
                 UPDATE waterways SET has_beach_downstream = true
                 WHERE nhd_comid IN (SELECT nhd_comid FROM upstream)
-            """))
+            """)
+            )
             log.info(f"  Propagated beach flag to {result.rowcount} upstream segments")
 
         if KNOWN_INTAKES:
-            result = await session.execute(text("""
+            result = await session.execute(
+                text("""
                 WITH RECURSIVE upstream AS (
                     SELECT nhd_comid FROM waterways WHERE has_intake_downstream = true
                     UNION
@@ -214,7 +219,8 @@ async def flag_beaches_and_intakes():
                 )
                 UPDATE waterways SET has_intake_downstream = true
                 WHERE nhd_comid IN (SELECT nhd_comid FROM upstream)
-            """))
+            """)
+            )
             log.info(f"  Propagated intake flag to {result.rowcount} upstream segments")
 
         await session.commit()
@@ -225,19 +231,19 @@ async def verify():
     _init_db()
     async with _session_factory() as session:
         total = (await session.execute(text("SELECT COUNT(*) FROM waterways"))).scalar()
-        linked = (await session.execute(
-            text("SELECT COUNT(*) FROM waterways WHERE downstream_comid IS NOT NULL")
-        )).scalar()
-        beaches = (await session.execute(
-            text("SELECT COUNT(*) FROM waterways WHERE has_beach_downstream = true")
-        )).scalar()
-        intakes = (await session.execute(
-            text("SELECT COUNT(*) FROM waterways WHERE has_intake_downstream = true")
-        )).scalar()
+        linked = (
+            await session.execute(text("SELECT COUNT(*) FROM waterways WHERE downstream_comid IS NOT NULL"))
+        ).scalar()
+        beaches = (
+            await session.execute(text("SELECT COUNT(*) FROM waterways WHERE has_beach_downstream = true"))
+        ).scalar()
+        intakes = (
+            await session.execute(text("SELECT COUNT(*) FROM waterways WHERE has_intake_downstream = true"))
+        ).scalar()
 
-        log.info(f"Verification:")
+        log.info("Verification:")
         log.info(f"  Total waterway segments: {total}")
-        log.info(f"  With downstream link:    {linked} ({linked/total*100:.1f}%)" if total else "  No segments")
+        log.info(f"  With downstream link:    {linked} ({linked / total * 100:.1f}%)" if total else "  No segments")
         log.info(f"  Beach downstream flag:   {beaches}")
         log.info(f"  Intake downstream flag:  {intakes}")
 
@@ -245,7 +251,8 @@ async def verify():
 async def main():
     parser = argparse.ArgumentParser(description="Build downstream connectivity links")
     parser.add_argument(
-        "--input", "-i",
+        "--input",
+        "-i",
         required=True,
         help="Path to NHDPlus flow/VAA table (DBF, GDB layer, or CSV)",
     )
@@ -257,7 +264,7 @@ async def main():
 
     if args.dry_run:
         log.info("Dry run — sample links:")
-        for i, (k, v) in enumerate(list(downstream.items())[:5]):
+        for _i, (k, v) in enumerate(list(downstream.items())[:5]):
             log.info(f"  {k} -> {v}")
         return
 

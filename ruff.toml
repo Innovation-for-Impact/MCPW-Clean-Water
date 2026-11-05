@@ -1,0 +1,16 @@
+target-version = "py311"
+line-length = 120
+
+[lint]
+select = ["E", "F", "I", "B", "RUF", "BLE"]
+ignore = [
+    "B008",    # Depends() in function defaults is standard FastAPI pattern
+    "BLE001",  # Broad exception catches are acceptable in CLI scripts
+]
+
+[lint.per-file-ignores]
+"src/models/*.py" = ["F821"]  # Forward references in SQLAlchemy relationships
+"src/services/incidents.py" = ["F821"]  # Forward reference to Event in type annotation
+"scripts/clip_and_reproject.py" = ["F821"]  # Type hint forward reference
+"tests/*.py" = ["RUF059"]  # Unused unpacked variables OK in tests (assert on one side)
+"tests/conftest.py" = ["E402"]  # Imports after sys.path / monkey-patch setup

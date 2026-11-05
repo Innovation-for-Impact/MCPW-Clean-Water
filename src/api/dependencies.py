@@ -32,12 +32,12 @@ async def get_current_user(
     try:
         payload = decode_access_token(credentials.credentials)
         user_id = int(payload["sub"])
-    except (jwt.InvalidTokenError, KeyError, ValueError):
+    except (jwt.InvalidTokenError, KeyError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     stmt = select(User).where(User.id == user_id)
     result = await db.execute(stmt)
@@ -50,14 +50,27 @@ async def get_current_user(
     return user
 
 
+ROLE_HIERARCHY = {"admin": 3, "responder": 2, "viewer": 1}
+
+
 class RequireRole:
-    """Dependency that checks the current user has one of the allowed roles."""
+    """Dependency that checks the current user meets the minimum role level.
+
+    Roles are hierarchical: admin > responder > viewer.
+    RequireRole("viewer") grants access to viewers, responders, and admins.
+    RequireRole("responder") grants access to responders and admins.
+    RequireRole("admin") grants access to admins only.
+
+    Multiple roles can be passed for explicit enumeration (backwards-compatible).
+    """
 
     def __init__(self, *allowed_roles: str):
         self.allowed_roles = allowed_roles
+        self.min_level = min(ROLE_HIERARCHY.get(r, 0) for r in allowed_roles)
 
     def __call__(self, user: User = Depends(get_current_user)) -> User:
-        if user.role not in self.allowed_roles:
+        user_level = ROLE_HIERARCHY.get(user.role, 0)
+        if user_level < self.min_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Role '{user.role}' is not authorized for this action",

@@ -6,8 +6,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-
-from src.models import Base  # noqa: F401 — registers all models with metadata
+from src.models import Base
 
 config = context.config
 
@@ -24,16 +23,43 @@ target_metadata = Base.metadata
 
 # Tables managed by PostGIS/tiger that Alembic should ignore
 EXCLUDE_TABLES = {
-    "spatial_ref_sys", "topology", "layer",
-    "county", "county_lookup", "countysub_lookup", "cousub",
-    "state", "state_lookup", "place", "place_lookup",
-    "faces", "edges", "addr", "addrfeat", "featnames",
-    "bg", "tract", "tabblock", "tabblock20", "zcta5",
-    "zip_lookup", "zip_lookup_all", "zip_lookup_base", "zip_state", "zip_state_loc",
-    "loader_lookuptables", "loader_platform", "loader_variables",
-    "direction_lookup", "secondary_unit_lookup", "street_type_lookup",
-    "geocode_settings", "geocode_settings_default",
-    "pagc_gaz", "pagc_lex", "pagc_rules",
+    "spatial_ref_sys",
+    "topology",
+    "layer",
+    "county",
+    "county_lookup",
+    "countysub_lookup",
+    "cousub",
+    "state",
+    "state_lookup",
+    "place",
+    "place_lookup",
+    "faces",
+    "edges",
+    "addr",
+    "addrfeat",
+    "featnames",
+    "bg",
+    "tract",
+    "tabblock",
+    "tabblock20",
+    "zcta5",
+    "zip_lookup",
+    "zip_lookup_all",
+    "zip_lookup_base",
+    "zip_state",
+    "zip_state_loc",
+    "loader_lookuptables",
+    "loader_platform",
+    "loader_variables",
+    "direction_lookup",
+    "secondary_unit_lookup",
+    "street_type_lookup",
+    "geocode_settings",
+    "geocode_settings_default",
+    "pagc_gaz",
+    "pagc_lex",
+    "pagc_rules",
 }
 
 

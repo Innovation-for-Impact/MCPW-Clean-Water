@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from geoalchemy2 import Geography
 from sqlalchemy import DateTime, Float, String, Text
@@ -12,12 +12,8 @@ from src.models.database import Base
 class Incident(Base):
     __tablename__ = "incidents"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    location: Mapped[str] = mapped_column(
-        Geography(geometry_type="POINT", srid=4326), nullable=False
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location: Mapped[str] = mapped_column(Geography(geometry_type="POINT", srid=4326), nullable=False)
     address: Mapped[str | None] = mapped_column(String(500))
     water_body: Mapped[str] = mapped_column(String(50), nullable=False)
     material: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -32,19 +28,17 @@ class Incident(Base):
     buffer_radius_m: Mapped[float | None] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
 
     jurisdictions: Mapped[list["Jurisdiction"]] = relationship(
         secondary="incident_jurisdictions", back_populates="incidents", lazy="selectin"
     )
-    contacts: Mapped[list["IncidentContact"]] = relationship(
-        back_populates="incident", lazy="selectin"
-    )
+    contacts: Mapped[list["IncidentContact"]] = relationship(back_populates="incident", lazy="selectin")
     events: Mapped[list["Event"]] = relationship(back_populates="incident", lazy="selectin")

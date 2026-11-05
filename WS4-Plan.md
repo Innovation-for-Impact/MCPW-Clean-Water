@@ -203,8 +203,8 @@ Every test scenario returns the correct contact list, and every contact has a so
   - Output:
     ```python
     {
-        "response_contacts": [Contact, ...],     # role = "response", sorted by priority (ascending)
-        "regulatory_contacts": [Contact, ...],   # role = "regulatory", sorted by priority (ascending)
+        "response_contacts": [Contact, ...],  # role = "response", sorted by priority (ascending)
+        "regulatory_contacts": [Contact, ...],  # role = "regulatory", sorted by priority (ascending)
     }
     ```
     Each contact includes: agency, phone, after_hours_phone, email, hours, deadline, source_url, last_verified, legal_citation

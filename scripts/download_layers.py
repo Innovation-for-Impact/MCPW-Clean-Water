@@ -11,10 +11,9 @@ download one at a time, or --all for everything.
 NOTE: S3 filenames and REST endpoints were verified 2026-10-22 but may
 change. If a download fails, check scripts/inventory.md for updated URLs.
 """
+
 import argparse
 import logging
-import os
-import sys
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -31,7 +30,7 @@ LAYERS = {
         "url": "https://gisagocss.state.mi.us/arcgis/rest/services/OpenData/michigan_geographic_framework/MapServer/2/query?where=1%3D1&outFields=*&f=geojson",
         "format": "geojson",
         "description": "Michigan Minor Civil Divisions (all municipalities) — REST query as GeoJSON. "
-                       "Filter to Macomb County (FIPS 099) after download.",
+        "Filter to Macomb County (FIPS 099) after download.",
     },
     "county_boundary": {
         "dir": "municipalities",
@@ -49,19 +48,17 @@ LAYERS = {
     "subwatersheds": {
         "dir": "subwatersheds",
         "url": "https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/6/query"
-               "?where=HUC12+LIKE+%2704090003%25%27&outFields=*&f=geojson"
-               "&resultRecordCount=5000",
+        "?where=HUC12+LIKE+%2704090003%25%27&outFields=*&f=geojson"
+        "&resultRecordCount=5000",
         "format": "geojson",
-        "description": "USGS WBD HUC-12 subwatersheds within HUC-8 04090003 "
-                       "(Clinton River) via ArcGIS REST query.",
+        "description": "USGS WBD HUC-12 subwatersheds within HUC-8 04090003 (Clinton River) via ArcGIS REST query.",
     },
     "waterways": {
         "dir": "waterways",
         "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/"
-               "NHDPlusHR/VPU/Current/GDB/NHDPLUS_H_0409_HU4_GDB.zip",
+        "NHDPlusHR/VPU/Current/GDB/NHDPLUS_H_0409_HU4_GDB.zip",
         "format": "zip",
-        "description": "USGS NHDPlus HR flowlines + water bodies, HUC-4 0409. "
-                       "~500MB download from S3.",
+        "description": "USGS NHDPlus HR flowlines + water bodies, HUC-4 0409. ~500MB download from S3.",
     },
 }
 
