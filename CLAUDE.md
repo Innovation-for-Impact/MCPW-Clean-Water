@@ -113,6 +113,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - `TEST_DATABASE_URL` — optional, overrides DATABASE_URL for tests
 - `LOG_LEVEL` — optional, default `INFO` (DEBUG, INFO, WARNING, ERROR)
 - `LOG_FORMAT` — optional, default `text` (set to `json` for structured JSON logs)
+- `CORS_ORIGINS` — optional, comma-separated allowed origins (defaults to `localhost:3000,localhost:5173`)
 
 ## Dev Users (seeded via `python -m scripts.seed_users`)
 - `admin` / `admin123` (admin role)
