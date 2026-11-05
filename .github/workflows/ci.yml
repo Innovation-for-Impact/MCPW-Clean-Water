@@ -45,7 +45,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio aiosqlite
+          pip install pytest "pytest-asyncio>=0.24,<1" aiosqlite
 
       - name: Run unit tests (SQLite)
         env:
