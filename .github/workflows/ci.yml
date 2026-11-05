@@ -45,9 +45,17 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest "pytest-asyncio>=0.24,<1" aiosqlite
+          pip install pytest pytest-asyncio aiosqlite
+          python -c "import pytest_asyncio; print(f'pytest-asyncio {pytest_asyncio.__version__}')"
+
+      - name: Smoke test (single file)
+        env:
+          SECRET_KEY: ci-test-key
+          DATABASE_URL: "sqlite+aiosqlite:///"
+        run: python -m pytest tests/test_health.py -v --tb=short
 
       - name: Run unit tests (SQLite)
+        timeout-minutes: 10
         env:
           SECRET_KEY: ci-test-key
           DATABASE_URL: "sqlite+aiosqlite:///"
