@@ -66,7 +66,7 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 4. Models (`src/models/`) define PostGIS geometry columns via GeoAlchemy2
 
 ### Key Architectural Patterns
-- **Dependency injection**: `src/api/dependencies.py` provides `get_db` (async session) and `RequireRole` (RBAC decorator accepting role strings)
+- **Dependency injection**: `src/api/dependencies.py` provides `get_db` (async session) and `RequireRole` (hierarchical RBAC: admin > responder > viewer — e.g., `RequireRole("viewer")` grants access to all three roles)
 - **App entry point**: `src/api/main.py` — FastAPI app with CORS and router registration
 - **Database config**: `src/models/database.py` — reads `DATABASE_URL` env var, creates async engine and session factory. `Base` (DeclarativeBase) lives here.
 - **Auth flow**: `src/services/auth.py` handles JWT creation/validation and password hashing. Requires `SECRET_KEY` env var.
@@ -144,16 +144,26 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 
 ## Outstanding Work
 
-### Blocked — External Dependency
-1. **Obtain drain district + storm sewer outfall data** from Macomb County Public Works (requires manual outreach — contact public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285)
+### TODO — Can Do Now
+1. **Add rate limiting to `/auth/login`** — no brute-force protection currently. Add `slowapi` or similar before pilot.
+2. **Refactor `contacts.py` and `rules.py` routes** — currently raw ORM in handlers with hand-built dicts. Move to service layer + `response_model` for consistency with other endpoints.
 
-### Pre-Pilot Hardening
-- Add rate limiting to `/auth/login` (e.g., `slowapi`) to prevent brute-force
-- Refactor `contacts.py` and `rules.py` routes to use service layer + `response_model` (currently raw ORM in handlers)
+### Blocked — Waiting on External Teams
+3. **WS5 Phase 4.2: Pilot readiness** — waiting on WS6 team to deliver scenario definitions for end-to-end validation.
+4. **WS3 Phase 3.2: Layer format coordination** — GeoJSON endpoints are built. Waiting on WS1 to confirm if they need ArcGIS feature layers or vector tiles instead.
+5. **Obtain drain district + storm sewer outfall data** — requires manual outreach to Macomb County Public Works (public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285). Once received, add to data pipeline and load into PostGIS.
 
-### Remaining
-- WS5 Phase 4.2: Pilot readiness — waiting on WS6 scenarios
-- WS3 Phase 3.2: Coordinate with WS1 on chosen layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
+### Done (This Branch)
+- [x] WS4 rules engine + contact directory + seed data (35 rules, 26 contacts)
+- [x] CI pipeline (lint, unit tests, spatial tests)
+- [x] Spatial benchmark — all targets PASS
+- [x] Structured logging + request middleware
+- [x] Docker hardening (non-root user, required secrets, resource limits)
+- [x] Ruff linting enforced across codebase
+- [x] RBAC hierarchy fix (admin > responder > viewer)
+- [x] CORS origins configurable via env var
+- [x] Production guard on seed scripts
+- [x] openapi.json CI sync check
 
 ## Breaking API Changes
 - **`POST /lookup` — `material` field is now optional** (was required). Clients that omitted `material` previously got 422; now they get results filtered to material-agnostic rules only. Update frontend callers if they relied on the 422 for validation.
