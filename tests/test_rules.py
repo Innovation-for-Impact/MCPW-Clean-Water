@@ -1,4 +1,5 @@
 """Unit tests for /rules CRUD."""
+
 import pytest
 
 

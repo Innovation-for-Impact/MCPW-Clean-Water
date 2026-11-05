@@ -44,15 +44,17 @@ async def get_jurisdiction_layer(
     features = []
     for row in rows:
         geom = json.loads(row.geojson) if row.geojson else None
-        features.append({
-            "type": "Feature",
-            "properties": {
-                "jurisdiction_id": row.jurisdiction_id,
-                "name": row.name,
-                "layer": row.layer,
-            },
-            "geometry": geom,
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "jurisdiction_id": row.jurisdiction_id,
+                    "name": row.name,
+                    "layer": row.layer,
+                },
+                "geometry": geom,
+            }
+        )
 
     return {
         "type": "FeatureCollection",
@@ -68,12 +70,7 @@ async def list_jurisdiction_layers(
     stmt = select(Jurisdiction.layer, func.count()).group_by(Jurisdiction.layer)
     result = await db.execute(stmt)
     rows = result.all()
-    return {
-        "layers": [
-            {"name": row[0], "count": row[1]}
-            for row in rows
-        ]
-    }
+    return {"layers": [{"name": row[0], "count": row[1]} for row in rows]}
 
 
 @router.get("/layers/waterways")
@@ -103,16 +100,18 @@ async def get_waterways_layer(
     features = []
     for row in rows:
         geom = json.loads(row.geojson) if row.geojson else None
-        features.append({
-            "type": "Feature",
-            "properties": {
-                "nhd_comid": row.nhd_comid,
-                "name": row.name,
-                "has_beach_downstream": row.has_beach_downstream,
-                "has_intake_downstream": row.has_intake_downstream,
-            },
-            "geometry": geom,
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "nhd_comid": row.nhd_comid,
+                    "name": row.name,
+                    "has_beach_downstream": row.has_beach_downstream,
+                    "has_intake_downstream": row.has_intake_downstream,
+                },
+                "geometry": geom,
+            }
+        )
 
     return {
         "type": "FeatureCollection",

@@ -1,13 +1,17 @@
 """Unit tests for POST /auth/login and POST /auth/register."""
+
 import pytest
 
 
 @pytest.mark.asyncio
 async def test_login_valid_credentials(client, seed_users):
-    resp = await client.post("/auth/login", json={
-        "username": "test_admin",
-        "password": "password123",
-    })
+    resp = await client.post(
+        "/auth/login",
+        json={
+            "username": "test_admin",
+            "password": "password123",
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
@@ -16,19 +20,25 @@ async def test_login_valid_credentials(client, seed_users):
 
 @pytest.mark.asyncio
 async def test_login_invalid_password(client, seed_users):
-    resp = await client.post("/auth/login", json={
-        "username": "test_admin",
-        "password": "wrong_password",
-    })
+    resp = await client.post(
+        "/auth/login",
+        json={
+            "username": "test_admin",
+            "password": "wrong_password",
+        },
+    )
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_login_nonexistent_user(client, seed_users):
-    resp = await client.post("/auth/login", json={
-        "username": "nobody",
-        "password": "password123",
-    })
+    resp = await client.post(
+        "/auth/login",
+        json={
+            "username": "nobody",
+            "password": "password123",
+        },
+    )
     assert resp.status_code == 401
 
 
@@ -41,13 +51,17 @@ async def test_login_missing_fields(client):
 @pytest.mark.asyncio
 async def test_login_token_contains_role(client, seed_users):
     """Decode the token and verify role claim is present."""
-    import jwt
     import os
 
-    resp = await client.post("/auth/login", json={
-        "username": "test_responder",
-        "password": "password123",
-    })
+    import jwt
+
+    resp = await client.post(
+        "/auth/login",
+        json={
+            "username": "test_responder",
+            "password": "password123",
+        },
+    )
     token = resp.json()["access_token"]
     payload = jwt.decode(token, os.environ["SECRET_KEY"], algorithms=["HS256"])
     assert payload["role"] == "responder"

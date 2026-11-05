@@ -200,14 +200,13 @@ The lookup returns the correct municipality, drain district, subwatershed, recei
 - [x] Return combined result:
   ```python
   {
-      "jurisdictions": [{"layer": "municipality", "jurisdiction_id": "muni_mount_clemens", "name": "Mount Clemens"}, ...],
+      "jurisdictions": [
+          {"layer": "municipality", "jurisdiction_id": "muni_mount_clemens", "name": "Mount Clemens"},
+          ...,
+      ],
       "nearest_water": {"name": "Clinton River", "distance_m": 45.2},
       "downstream_path": ["Clinton River", "Lake St. Clair"],
-      "flags": {
-          "beach_downstream": True,
-          "intake_downstream": False,
-          "outside_county": False
-      }
+      "flags": {"beach_downstream": True, "intake_downstream": False, "outside_county": False},
   }
   ```
 

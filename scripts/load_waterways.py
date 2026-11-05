@@ -9,17 +9,17 @@ Usage:
 
 Requires: fiona, shapely
 """
+
 import argparse
 import asyncio
 import json
 import logging
 import sys
-from pathlib import Path
 
 import fiona
-from shapely.geometry import mapping, shape
-from shapely.ops import linemerge
 from shapely import force_2d
+from shapely.geometry import shape
+from shapely.ops import linemerge
 from sqlalchemy import text
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
@@ -29,7 +29,8 @@ log = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser(description="Load NHDPlus HR flowlines into PostGIS")
     parser.add_argument(
-        "--input", "-i",
+        "--input",
+        "-i",
         required=True,
         help="Path to prepared flowline file (Shapefile, GeoJSON, or GDB layer)",
     )
@@ -177,13 +178,14 @@ async def main():
 
     if args.dry_run:
         log.info("Dry run — skipping database insert")
-        log.info(f"Sample records:")
+        log.info("Sample records:")
         for r in flowlines[:5]:
             log.info(f"  COMID {r['nhd_comid']}: {r['name'] or '(unnamed)'}")
         return
 
     # Lazy import — only needed for actual DB writes
     import os
+
     if "DATABASE_URL" not in os.environ:
         log.error("DATABASE_URL environment variable is required for DB writes")
         sys.exit(1)

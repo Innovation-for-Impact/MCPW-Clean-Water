@@ -5,6 +5,7 @@ Flags contacts not verified within the last 30 days.
 
 Usage: DATABASE_URL=... python -m scripts.verify_contacts
 """
+
 import asyncio
 from datetime import date, timedelta
 
@@ -18,9 +19,7 @@ STALE_DAYS = 30
 
 async def main():
     async with async_session_factory() as session:
-        result = await session.execute(
-            select(Contact).order_by(Contact.jurisdiction_scope, Contact.agency)
-        )
+        result = await session.execute(select(Contact).order_by(Contact.jurisdiction_scope, Contact.agency))
         contacts = result.scalars().all()
 
     await engine.dispose()

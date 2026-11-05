@@ -11,13 +11,14 @@ Targets (from WS3 plan):
     - lookup_jurisdictions: median < 100ms, p95 < 200ms
     - trace_downstream (longest path): < 500ms
 """
+
 import asyncio
 import os
 import random
 import statistics
 import time
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 DB_URL = os.environ.get("TEST_DATABASE_URL", os.environ.get("DATABASE_URL", ""))
 
@@ -58,7 +59,11 @@ async def main():
     engine = create_async_engine(DB_URL, echo=False)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    from src.services.spatial import find_nearest_water, lookup_jurisdictions, trace_downstream
+    from src.services.spatial import (
+        find_nearest_water,
+        lookup_jurisdictions,
+        trace_downstream,
+    )
 
     print("=" * 60)
     print("Spatial Query Benchmark")
@@ -111,8 +116,7 @@ async def main():
                 path = await trace_downstream(comid, db=db)
                 elapsed = (time.perf_counter() - t0) * 1000
                 trace_times.append(elapsed)
-                if len(path) > max_path_len:
-                    max_path_len = len(path)
+                max_path_len = max(max_path_len, len(path))
 
         med, p95 = report("trace_downstream", trace_times)
         trace_ok = p95 < 500

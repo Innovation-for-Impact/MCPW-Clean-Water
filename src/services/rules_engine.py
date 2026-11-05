@@ -4,6 +4,7 @@ WS4 rules engine.
 Given jurisdictions and incident details, returns contacts split into
 Response and Regulatory lists, sorted by rule priority.
 """
+
 import logging
 
 from sqlalchemy import select
@@ -40,9 +41,7 @@ async def evaluate_rules(
         stmt = stmt.where(Rule.material.is_(None))
 
     if quantity_gallons is not None:
-        stmt = stmt.where(
-            (Rule.size_threshold <= quantity_gallons) | (Rule.size_threshold.is_(None))
-        )
+        stmt = stmt.where((Rule.size_threshold <= quantity_gallons) | (Rule.size_threshold.is_(None)))
     else:
         # Unknown quantity: only match size-agnostic rules
         stmt = stmt.where(Rule.size_threshold.is_(None))

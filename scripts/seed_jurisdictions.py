@@ -5,13 +5,12 @@ Coordinate with WS3 on actual spatial data imports.
 Usage:
     DATABASE_URL="postgresql+asyncpg://..." python scripts/seed_jurisdictions.py
 """
+
 import asyncio
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.database import async_session_factory, engine
-
 
 SAMPLE_JURISDICTIONS = [
     {

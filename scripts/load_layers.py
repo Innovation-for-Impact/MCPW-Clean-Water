@@ -10,6 +10,7 @@ the `jurisdictions` table. Uses jurisdiction_id as the stable key for upserts
 
 Requires a running PostgreSQL/PostGIS database via DATABASE_URL env var.
 """
+
 import argparse
 import asyncio
 import json
@@ -72,14 +73,16 @@ def load_features(filename: str, config: dict) -> list[dict]:
 
         name = props.get(config["name_field"], jurisdiction_id)
 
-        rows.append({
-            "layer": config["layer"],
-            "jurisdiction_id": jurisdiction_id,
-            "name": name,
-            "geometry_wkt": wkt,
-            "source_url": config["source_url"],
-            "last_updated": date.today(),
-        })
+        rows.append(
+            {
+                "layer": config["layer"],
+                "jurisdiction_id": jurisdiction_id,
+                "name": name,
+                "geometry_wkt": wkt,
+                "source_url": config["source_url"],
+                "last_updated": date.today(),
+            }
+        )
 
     return rows
 

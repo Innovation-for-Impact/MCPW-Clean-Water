@@ -5,6 +5,7 @@ Provides low-level spatial queries against the PostGIS jurisdictions and
 waterways tables. Used by test_spatial.py boundary tests and can be
 called independently of the lookup/rules engine.
 """
+
 from geoalchemy2.functions import ST_Distance, ST_DWithin, ST_MakePoint, ST_SetSRID
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +14,7 @@ from src.models.jurisdiction import Jurisdiction as JurisdictionModel
 from src.models.waterway import Waterway as WaterwayModel
 
 
-async def lookup_jurisdictions(
-    lat: float, lon: float, *, db: AsyncSession, buffer_m: float = 0
-) -> list[dict]:
+async def lookup_jurisdictions(lat: float, lon: float, *, db: AsyncSession, buffer_m: float = 0) -> list[dict]:
     """Find all jurisdictions that contain or intersect a point.
 
     Returns a list of dicts with keys: layer, jurisdiction_id, name.
@@ -37,9 +36,7 @@ async def lookup_jurisdictions(
     ]
 
 
-async def find_nearest_water(
-    lat: float, lon: float, *, db: AsyncSession, max_distance_m: float = 500
-) -> dict | None:
+async def find_nearest_water(lat: float, lon: float, *, db: AsyncSession, max_distance_m: float = 500) -> dict | None:
     """Find the nearest waterway within max_distance_m of a point.
 
     Returns a dict with keys: name, nhd_comid, distance_m, or None if
@@ -124,12 +121,14 @@ async def trace_downstream(nhd_comid: int, *, db: AsyncSession, max_hops: int = 
             if waterway is None:
                 break
 
-            path.append({
-                "name": waterway.name,
-                "nhd_comid": waterway.nhd_comid,
-                "has_beach_downstream": waterway.has_beach_downstream,
-                "has_intake_downstream": waterway.has_intake_downstream,
-            })
+            path.append(
+                {
+                    "name": waterway.name,
+                    "nhd_comid": waterway.nhd_comid,
+                    "has_beach_downstream": waterway.has_beach_downstream,
+                    "has_intake_downstream": waterway.has_intake_downstream,
+                }
+            )
 
             current_comid = waterway.downstream_comid
 

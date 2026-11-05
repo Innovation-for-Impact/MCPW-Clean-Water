@@ -1,4 +1,5 @@
 """Unit tests for GET /health."""
+
 import pytest
 
 

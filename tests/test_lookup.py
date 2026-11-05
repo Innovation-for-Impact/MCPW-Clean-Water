@@ -1,11 +1,11 @@
 """Unit tests for POST /lookup."""
+
 from datetime import date
 
 import pytest
 import pytest_asyncio
 
 from tests.conftest import SAMPLE_LOOKUP_BODY
-
 
 # ---------------------------------------------------------------------------
 # Fixture: seed jurisdiction + contact + rule data for meaningful tests

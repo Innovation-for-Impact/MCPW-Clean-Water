@@ -1,6 +1,6 @@
 """Unit tests for /contacts CRUD."""
-import pytest
 
+import pytest
 
 SAMPLE_CONTACT = {
     "agency": "Test Agency",
@@ -22,7 +22,9 @@ async def test_list_contacts_empty(client, auth_headers):
 @pytest.mark.asyncio
 async def test_create_contact_admin(client, auth_headers):
     resp = await client.post(
-        "/contacts", json=SAMPLE_CONTACT, headers=auth_headers["admin"],
+        "/contacts",
+        json=SAMPLE_CONTACT,
+        headers=auth_headers["admin"],
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -33,7 +35,9 @@ async def test_create_contact_admin(client, auth_headers):
 @pytest.mark.asyncio
 async def test_create_contact_responder_forbidden(client, auth_headers):
     resp = await client.post(
-        "/contacts", json=SAMPLE_CONTACT, headers=auth_headers["responder"],
+        "/contacts",
+        json=SAMPLE_CONTACT,
+        headers=auth_headers["responder"],
     )
     assert resp.status_code == 403
 
@@ -41,7 +45,9 @@ async def test_create_contact_responder_forbidden(client, auth_headers):
 @pytest.mark.asyncio
 async def test_create_contact_missing_field(client, auth_headers):
     resp = await client.post(
-        "/contacts", json={"agency": "Incomplete"}, headers=auth_headers["admin"],
+        "/contacts",
+        json={"agency": "Incomplete"},
+        headers=auth_headers["admin"],
     )
     assert resp.status_code == 422
 
@@ -57,11 +63,14 @@ async def test_list_contacts_after_create(client, auth_headers):
 @pytest.mark.asyncio
 async def test_delete_contact(client, auth_headers):
     create_resp = await client.post(
-        "/contacts", json=SAMPLE_CONTACT, headers=auth_headers["admin"],
+        "/contacts",
+        json=SAMPLE_CONTACT,
+        headers=auth_headers["admin"],
     )
     contact_id = create_resp.json()["id"]
     del_resp = await client.delete(
-        f"/contacts/{contact_id}", headers=auth_headers["admin"],
+        f"/contacts/{contact_id}",
+        headers=auth_headers["admin"],
     )
     assert del_resp.status_code == 200
     assert del_resp.json()["deleted"] is True

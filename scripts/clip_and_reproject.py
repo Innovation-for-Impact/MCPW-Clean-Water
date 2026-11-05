@@ -11,13 +11,13 @@ normalizes CRS metadata in the output.
 
 Requires: shapely (pip install shapely)
 """
+
 import json
 import logging
 import urllib.request
 from pathlib import Path
 
 from shapely.geometry import mapping, shape
-from shapely.ops import unary_union
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -31,9 +31,7 @@ def load_county_boundary() -> "shapely.geometry.base.BaseGeometry":
     """Load and return the Macomb County boundary polygon."""
     path = RAW / "municipalities" / "macomb_county_boundary.geojson"
     if not path.exists():
-        raise FileNotFoundError(
-            f"{path} not found. Run: python scripts/download_layers.py --layer county_boundary"
-        )
+        raise FileNotFoundError(f"{path} not found. Run: python scripts/download_layers.py --layer county_boundary")
     with open(path) as f:
         data = json.load(f)
     return shape(data["features"][0]["geometry"])
@@ -75,7 +73,7 @@ def clip_geojson(input_path: Path, clip_geom, output_path: Path, buffer_m: float
 def download_municipalities_for_county(county_geom, output_path: Path):
     """Download municipalities within the county bbox directly from ArcGIS REST."""
     bounds = county_geom.bounds  # (minx, miny, maxx, maxy)
-    bbox = f"{bounds[0]-0.01},{bounds[1]-0.01},{bounds[2]+0.01},{bounds[3]+0.01}"
+    bbox = f"{bounds[0] - 0.01},{bounds[1] - 0.01},{bounds[2] + 0.01},{bounds[3] + 0.01}"
     url = (
         "https://gisagocss.state.mi.us/arcgis/rest/services/OpenData/"
         "michigan_geographic_framework/MapServer/2/query"
@@ -131,9 +129,7 @@ def main():
     log.info("\n--- Shoreline ---")
     shoreline_raw = RAW / "shoreline" / "shoreline.geojson"
     if shoreline_raw.exists():
-        results["shoreline"] = clip_geojson(
-            shoreline_raw, county_geom, PREPARED / "shoreline.geojson"
-        )
+        results["shoreline"] = clip_geojson(shoreline_raw, county_geom, PREPARED / "shoreline.geojson")
     else:
         log.warning("  Shoreline not downloaded. Run: python scripts/download_layers.py --layer shoreline")
 
@@ -141,9 +137,7 @@ def main():
     log.info("\n--- Subwatersheds ---")
     subwatersheds_raw = RAW / "subwatersheds" / "subwatersheds.geojson"
     if subwatersheds_raw.exists():
-        results["subwatersheds"] = clip_geojson(
-            subwatersheds_raw, county_geom, PREPARED / "subwatersheds.geojson"
-        )
+        results["subwatersheds"] = clip_geojson(subwatersheds_raw, county_geom, PREPARED / "subwatersheds.geojson")
     else:
         log.warning("  Subwatersheds not downloaded. Run: python scripts/download_layers.py --layer subwatersheds")
 
