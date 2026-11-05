@@ -140,7 +140,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - TC10 `trace_downstream` and `downstream_flags` tests skip because the nearest segment is terminal (no downstream path).
 - SQLite `ST_DWithin` stub in `conftest.py` always returns `True` — spatial filtering bugs won't be caught by unit tests, only by PostGIS spatial tests.
 - `RequestLoggingMiddleware` uses Starlette's `BaseHTTPMiddleware`, which creates a task per request and prevents streaming responses. Fine at current scale; revisit if adding SSE or large file downloads.
-- `openapi.json` is committed — CI verifies it matches the app. Regenerate with: `python -c "from src.api.main import app; import json; print(json.dumps(app.openapi(), indent=4))" > openapi.json`
+- `openapi.json` is committed for reference but not CI-verified (Pydantic version differences cause schema drift). Regenerate with: `SECRET_KEY=x DATABASE_URL="sqlite+aiosqlite:///" python -c "from src.api.main import app; import json; print(json.dumps(app.openapi(), indent=4))" > openapi.json`
 
 ## Outstanding Work
 

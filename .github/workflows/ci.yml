@@ -60,16 +60,6 @@ jobs:
           --ignore=tests/test_spatial.py
           --ignore=tests/test_postgis_e2e.py
 
-      - name: Verify openapi.json is up to date
-        env:
-          SECRET_KEY: ci-test-key
-          DATABASE_URL: "sqlite+aiosqlite:///"
-        run: |
-          python -c "from src.api.main import app; import json; print(json.dumps(app.openapi(), indent=4))" > /tmp/openapi_generated.json
-          diff -u openapi.json /tmp/openapi_generated.json || {
-            echo "::error::openapi.json is out of date. Regenerate with: python -c \"from src.api.main import app; import json; print(json.dumps(app.openapi(), indent=4))\" > openapi.json"
-            exit 1
-          }
 
   # Spatial tests require PostGIS with loaded GIS data (~260MB, gitignored).
   # Triggered manually. Data is restored from GitHub Actions cache.
