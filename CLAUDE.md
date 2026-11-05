@@ -144,4 +144,19 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 ### Remaining
 - WS5 Phase 4.2: Pilot readiness — waiting on WS6 scenarios
 - WS3 Phase 3.2: Coordinate with WS1 on chosen layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
-- Run `scripts/benchmark_spatial.py` against PostGIS to validate performance targets
+- Wire up spatial-tests CI job data pipeline (GIS data is gitignored; needs artifact/S3 storage)
+- Remove lint CI `continue-on-error` after ruff formatting cleanup
+
+## CI
+
+GitHub Actions workflow (`.github/workflows/ci.yml`) with three jobs:
+- **lint**: ruff format + lint check (currently `continue-on-error: true` until formatting enforced)
+- **unit-tests**: 137 SQLite-based tests on every push/PR to `main`
+- **spatial-tests**: PostGIS integration tests, manual `workflow_dispatch` only (requires GIS data)
+
+## Benchmark Results (2026-11-04)
+
+All spatial query performance targets **PASS** (run via `scripts/benchmark_spatial.py`):
+- `lookup_jurisdictions` (100 calls): median=4.3ms, p95=9.1ms — target <100ms/<200ms
+- `find_nearest_water` (100 calls): median=1.0ms, p95=2.5ms
+- `trace_downstream` (50 calls): median=0.6ms, p95=2.1ms — target <500ms; longest path 42 segments

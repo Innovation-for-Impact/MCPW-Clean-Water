@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Check formatting
+        run: ruff format --check .
+
+      - name: Check linting
+        run: ruff check .
+
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio aiosqlite
+
+      - name: Run unit tests (SQLite)
+        env:
+          SECRET_KEY: ci-test-key
+          DATABASE_URL: "sqlite+aiosqlite:///"
+        run: >
+          python -m pytest tests/ -v --tb=short
+          --ignore=tests/test_spatial.py
+          --ignore=tests/test_postgis_e2e.py
+
+  # Spatial tests require PostGIS with loaded GIS data (gitignored).
+  # Run manually or after uploading data to a CI-accessible location.
+  spatial-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    services:
+      postgres:
+        image: postgis/postgis:15-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cleanwater
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgeos-dev libproj-dev gdal-bin
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Download GIS data
+        run: |
+          echo "TODO: Download or restore GIS data from artifact storage"
+          echo "Needed: data/raw/municipalities/, data/raw/waterways/, data/raw/subwatersheds/"
+          exit 1
+
+      - name: Run migrations and load data
+        env:
+          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater"
+          SECRET_KEY: ci-test-key
+        run: |
+          alembic upgrade head
+          python -m scripts.load_layers
+          python -m scripts.load_waterways -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb --layer NHDFlowline --clip data/raw/municipalities/macomb_county_boundary.geojson
+          python -m scripts.build_downstream_links -i data/raw/waterways/NHDPLUS_H_0409_HU4_GDB.gdb --layer NHDPlusFlow
+          python -m scripts.seed_users
+          python -m scripts.seed_contacts
+          python -m scripts.seed_rules
+
+      - name: Run spatial tests
+        env:
+          SECRET_KEY: ci-test-key
+          DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater"
+          TEST_DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater"
+        run: >
+          python -m pytest tests/test_spatial.py tests/test_postgis_e2e.py -v --tb=short
