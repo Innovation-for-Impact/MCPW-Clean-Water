@@ -1,8 +1,17 @@
-"""Seed initial users for development/testing."""
+"""Seed initial users for development/testing.
+
+WARNING: Uses hardcoded dev passwords. Do NOT run in production.
+Set ENVIRONMENT=production to block execution.
+"""
 
 import asyncio
 import os
 import sys
+
+if os.environ.get("ENVIRONMENT", "").lower() == "production":
+    print("ERROR: seed_users must not run in production (ENVIRONMENT=production is set).")
+    print("Create users via the admin API instead.")
+    raise SystemExit(1)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

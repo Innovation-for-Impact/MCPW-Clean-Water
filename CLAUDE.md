@@ -114,6 +114,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - `LOG_LEVEL` — optional, default `INFO` (DEBUG, INFO, WARNING, ERROR)
 - `LOG_FORMAT` — optional, default `text` (set to `json` for structured JSON logs)
 - `CORS_ORIGINS` — optional, comma-separated allowed origins (defaults to `localhost:3000,localhost:5173`)
+- `ENVIRONMENT` — optional, set to `production` to block dev seed scripts from running
 
 ## Dev Users (seeded via `python -m scripts.seed_users`)
 - `admin` / `admin123` (admin role)
@@ -138,15 +139,24 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - NHD does not include Lake St. Clair as a flowline — the Clinton River terminates at "Clinton River Spillway" near the lake.
 - TC10 `trace_downstream` and `downstream_flags` tests skip because the nearest segment is terminal (no downstream path).
 - SQLite `ST_DWithin` stub in `conftest.py` always returns `True` — spatial filtering bugs won't be caught by unit tests, only by PostGIS spatial tests.
+- `RequestLoggingMiddleware` uses Starlette's `BaseHTTPMiddleware`, which creates a task per request and prevents streaming responses. Fine at current scale; revisit if adding SSE or large file downloads.
+- `openapi.json` is committed — CI verifies it matches the app. Regenerate with: `python -c "from src.api.main import app; import json; print(json.dumps(app.openapi(), indent=4))" > openapi.json`
 
 ## Outstanding Work
 
 ### Blocked — External Dependency
 1. **Obtain drain district + storm sewer outfall data** from Macomb County Public Works (requires manual outreach — contact public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285)
 
+### Pre-Pilot Hardening
+- Add rate limiting to `/auth/login` (e.g., `slowapi`) to prevent brute-force
+- Refactor `contacts.py` and `rules.py` routes to use service layer + `response_model` (currently raw ORM in handlers)
+
 ### Remaining
 - WS5 Phase 4.2: Pilot readiness — waiting on WS6 scenarios
 - WS3 Phase 3.2: Coordinate with WS1 on chosen layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
+
+## Breaking API Changes
+- **`POST /lookup` — `material` field is now optional** (was required). Clients that omitted `material` previously got 422; now they get results filtered to material-agnostic rules only. Update frontend callers if they relied on the 422 for validation.
 
 ## CI
 
