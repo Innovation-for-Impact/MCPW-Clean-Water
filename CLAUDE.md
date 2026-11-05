@@ -111,6 +111,8 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - `SECRET_KEY` — **required**, used for JWT signing
 - `DATABASE_URL` — **required**, async SQLAlchemy URL (e.g., `postgresql+asyncpg://...` or `sqlite+aiosqlite:///`)
 - `TEST_DATABASE_URL` — optional, overrides DATABASE_URL for tests
+- `LOG_LEVEL` — optional, default `INFO` (DEBUG, INFO, WARNING, ERROR)
+- `LOG_FORMAT` — optional, default `text` (set to `json` for structured JSON logs)
 
 ## Dev Users (seeded via `python -m scripts.seed_users`)
 - `admin` / `admin123` (admin role)
@@ -144,15 +146,30 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 ### Remaining
 - WS5 Phase 4.2: Pilot readiness — waiting on WS6 scenarios
 - WS3 Phase 3.2: Coordinate with WS1 on chosen layer format (GeoJSON endpoints are built; may need ArcGIS feature layers or vector tiles)
-- Wire up spatial-tests CI job data pipeline (GIS data is gitignored; needs artifact/S3 storage)
-- Remove lint CI `continue-on-error` after ruff formatting cleanup
 
 ## CI
 
-GitHub Actions workflow (`.github/workflows/ci.yml`) with three jobs:
-- **lint**: ruff format + lint check (currently `continue-on-error: true` until formatting enforced)
-- **unit-tests**: 137 SQLite-based tests on every push/PR to `main`
-- **spatial-tests**: PostGIS integration tests, manual `workflow_dispatch` only (requires GIS data)
+GitHub Actions workflows in `.github/workflows/`:
+- **ci.yml** — three jobs:
+  - **lint**: ruff format + lint (required check)
+  - **unit-tests**: 137 SQLite-based tests on every push/PR to `main`
+  - **spatial-tests**: PostGIS integration + benchmark, manual `workflow_dispatch` only (requires geodata cache)
+- **cache-geodata.yml** — one-time `workflow_dispatch` to upload `data/raw/` (~260MB) into Actions cache for spatial-tests
+
+## Linting
+
+`ruff.toml` configures ruff for Python 3.11, line-length 120. Run `ruff check .` and `ruff format .` locally.
+
+## Logging
+
+- `src/logging_config.py` — structured logging config, controlled by `LOG_LEVEL` and `LOG_FORMAT` env vars
+- `src/api/middleware.py` — `RequestLoggingMiddleware` logs method, path, status, duration, request_id on every request
+- Set `LOG_FORMAT=json` for structured JSON output in production
+
+## Docker
+
+- `Dockerfile` — non-root `appuser`, slim image, `.dockerignore` excludes tests/data/docs
+- `docker-compose.yml` — requires `POSTGRES_PASSWORD` and `SECRET_KEY` via `.env` (no hardcoded defaults for secrets), resource limits (1G db, 512M api), restart policies
 
 ## Benchmark Results (2026-11-04)
 

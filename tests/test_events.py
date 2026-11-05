@@ -1,4 +1,5 @@
 """Unit tests for GET /events."""
+
 import pytest
 
 from tests.conftest import SAMPLE_INCIDENT_BODY
@@ -38,7 +39,7 @@ async def test_event_created_on_incident(client, auth_headers):
 @pytest.mark.asyncio
 async def test_events_filter_by_incident_id(client, auth_headers):
     id1 = await _create_incident(client, auth_headers["responder"])
-    id2 = await _create_incident(client, auth_headers["responder"])
+    await _create_incident(client, auth_headers["responder"])
 
     # Filter to first incident only
     resp = await client.get(

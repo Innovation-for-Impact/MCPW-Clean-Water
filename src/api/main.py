@@ -1,7 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import auth, contacts, events, health, incidents, layers, lookup, rules, webhooks
+from src.api.middleware import RequestLoggingMiddleware
+from src.api.routes import (
+    auth,
+    contacts,
+    events,
+    health,
+    incidents,
+    layers,
+    lookup,
+    rules,
+    webhooks,
+)
+from src.logging_config import setup_logging
+
+setup_logging()
 
 app = FastAPI(
     title="MCPW Clean Water API",
@@ -9,6 +23,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

@@ -1,4 +1,5 @@
 """Tests for the /layers GeoJSON endpoints."""
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,7 +84,7 @@ async def test_list_jurisdiction_layers(client, seed_jurisdictions):
     resp = await client.get("/layers/jurisdictions")
     assert resp.status_code == 200
     data = resp.json()
-    layers = {l["name"]: l["count"] for l in data["layers"]}
+    layers = {layer["name"]: layer["count"] for layer in data["layers"]}
     assert layers["municipality"] == 2
     assert layers["subwatershed"] == 1
     assert layers["county"] == 1
