@@ -42,17 +42,23 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgeos-dev
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install pytest pytest-asyncio aiosqlite
-          python -c "import pytest_asyncio; print(f'pytest-asyncio {pytest_asyncio.__version__}')"
 
-      - name: Smoke test (single file)
+      - name: Verify imports
         env:
           SECRET_KEY: ci-test-key
           DATABASE_URL: "sqlite+aiosqlite:///"
-        run: python -m pytest tests/test_health.py -v --tb=short
+        run: |
+          python -c "import pytest_asyncio; print(f'pytest-asyncio {pytest_asyncio.__version__}')"
+          python -c "import aiosqlite; print(f'aiosqlite {aiosqlite.__version__}')"
+          python -c "from src.api.main import app; print('app import OK')"
+          python -c "import tests.conftest; print('conftest import OK')"
 
       - name: Run unit tests (SQLite)
         timeout-minutes: 10
@@ -60,7 +66,7 @@ jobs:
           SECRET_KEY: ci-test-key
           DATABASE_URL: "sqlite+aiosqlite:///"
         run: >
-          python -m pytest tests/ -v --tb=short
+          python -m pytest tests/ -v --tb=short -x
           --ignore=tests/test_spatial.py
           --ignore=tests/test_postgis_e2e.py
 
