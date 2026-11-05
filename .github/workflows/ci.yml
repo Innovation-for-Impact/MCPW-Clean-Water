@@ -50,18 +50,8 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio aiosqlite
 
-      - name: Verify imports
-        env:
-          SECRET_KEY: ci-test-key
-          DATABASE_URL: "sqlite+aiosqlite:///"
-        run: |
-          python -c "import pytest_asyncio; print(f'pytest-asyncio {pytest_asyncio.__version__}')"
-          python -c "import aiosqlite; print(f'aiosqlite {aiosqlite.__version__}')"
-          python -c "from src.api.main import app; print('app import OK')"
-          python -c "import tests.conftest; print('conftest import OK')"
-
       - name: Run unit tests (SQLite)
-        timeout-minutes: 10
+        timeout-minutes: 5
         env:
           SECRET_KEY: ci-test-key
           DATABASE_URL: "sqlite+aiosqlite:///"
