@@ -1,68 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import RequireRole, get_db
-from src.models.contact import Contact
 from src.models.user import User
-from src.schemas.contact import ContactCreate
+from src.schemas.contact import ContactBrief, ContactCreate, ContactResponse
+from src.services.contacts import create_contact as svc_create
+from src.services.contacts import delete_contact as svc_delete
+from src.services.contacts import list_contacts as svc_list
 
 router = APIRouter()
 
 
-@router.get("/contacts")
+@router.get("/contacts", response_model=list[ContactResponse])
 async def list_contacts(
     db: AsyncSession = Depends(get_db),
     _user: User = Depends(RequireRole("viewer")),
     limit: int = Query(default=100, le=500),
     offset: int = Query(default=0, ge=0),
 ):
-    result = await db.execute(select(Contact).limit(limit).offset(offset))
-    rows = result.scalars().all()
-    return [
-        {
-            "id": c.id,
-            "agency": c.agency,
-            "role": c.role,
-            "jurisdiction_id": c.jurisdiction_id,
-            "jurisdiction_scope": c.jurisdiction_scope,
-            "phone": c.phone,
-            "after_hours_phone": c.after_hours_phone,
-            "email": c.email,
-            "hours": c.hours,
-            "reporting_deadline": c.reporting_deadline,
-            "source_url": c.source_url,
-            "last_verified": c.last_verified.isoformat() if c.last_verified else None,
-            "notes": c.notes,
-        }
-        for c in rows
-    ]
+    return await svc_list(db, limit=limit, offset=offset)
 
 
-@router.post("/contacts", status_code=201)
+@router.post("/contacts", status_code=201, response_model=ContactBrief)
 async def create_contact(
     body: ContactCreate,
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(RequireRole("admin")),
 ):
-    contact = Contact(
-        agency=body.agency,
-        role=body.role.value,
-        jurisdiction_id=body.jurisdiction_id,
-        jurisdiction_scope=body.jurisdiction_scope,
-        phone=body.phone,
-        after_hours_phone=body.after_hours_phone,
-        email=body.email,
-        hours=body.hours,
-        reporting_deadline=body.reporting_deadline,
-        source_url=body.source_url,
-        last_verified=body.last_verified,
-        notes=body.notes,
-    )
-    db.add(contact)
-    await db.commit()
-    await db.refresh(contact)
-    return {"id": contact.id, "agency": contact.agency}
+    return await svc_create(db, body)
 
 
 @router.delete("/contacts/{contact_id}")
@@ -71,10 +36,5 @@ async def delete_contact(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(RequireRole("admin")),
 ):
-    result = await db.execute(select(Contact).where(Contact.id == contact_id))
-    contact = result.scalar_one_or_none()
-    if not contact:
-        raise HTTPException(status_code=404, detail="Contact not found")
-    await db.delete(contact)
-    await db.commit()
+    await svc_delete(db, contact_id)
     return {"deleted": True}

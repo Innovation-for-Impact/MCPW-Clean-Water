@@ -83,13 +83,13 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 
 ### API Endpoints
 - **Health** (`health.py`): `GET /health` — no auth
-- **Auth** (`auth.py`): `POST /auth/login`, `POST /auth/register` (admin only)
+- **Auth** (`auth.py`): `POST /auth/login` (rate-limited: 5/min per IP), `POST /auth/register` (admin only)
 - **Layers** (`layers.py`): Public GeoJSON endpoints for WS1 map overlays — `GET /layers/jurisdictions` (list layers), `GET /layers/jurisdictions/{layer_name}` (FeatureCollection), `GET /layers/waterways` (flowlines with `named_only`/pagination params). No auth required.
 - **Lookup** (`lookup.py`): `POST /lookup` — orchestrates WS3 spatial query + WS4 rules engine via `src/services/lookup.py`. Requires responder+.
 - **Incidents** (`incidents.py`): `POST /incidents` (responder+), `GET /incidents/{id}` (viewer+) — saves incident + emits event
 - **Events** (`events.py`): `GET /events` (viewer+) — poll incident events for dashboard/Accela
-- **Contacts** (`contacts.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — direct ORM, no service file
-- **Rules** (`rules.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — direct ORM, no service file
+- **Contacts** (`contacts.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — service layer in `src/services/contacts.py`, `response_model` via Pydantic
+- **Rules** (`rules.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — service layer in `src/services/rules.py`, `response_model` via Pydantic
 - **Webhooks** (`webhooks.py`): `POST`/`GET`/`DELETE` — admin only
 
 ### Testing Infrastructure
@@ -105,7 +105,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 
 **Important**: bcrypt is pinned to 4.0.1 because passlib is incompatible with bcrypt 5.x.
 
-**Test status**: 137 unit tests pass on SQLite (including 8 rules engine scenarios) + 38 spatial tests on PostGIS + 9 PostGIS e2e tests. **184 total** (2 spatial skipped for TC10 terminal segment).
+**Test status**: 138 unit tests pass on SQLite (including 8 rules engine scenarios + rate limit test) + 38 spatial tests on PostGIS + 9 PostGIS e2e tests. **185 total** (2 spatial skipped for TC10 terminal segment).
 
 ## Environment Variables
 - `SECRET_KEY` — **required**, used for JWT signing
@@ -144,10 +144,6 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 
 ## Outstanding Work
 
-### TODO — Can Do Now
-1. **Add rate limiting to `/auth/login`** — no brute-force protection currently. Add `slowapi` or similar before pilot.
-2. **Refactor `contacts.py` and `rules.py` routes** — currently raw ORM in handlers with hand-built dicts. Move to service layer + `response_model` for consistency with other endpoints.
-
 ### Blocked — Waiting on External Teams
 3. **WS5 Phase 4.2: Pilot readiness** — waiting on WS6 team to deliver scenario definitions for end-to-end validation.
 4. **WS3 Phase 3.2: Layer format coordination** — GeoJSON endpoints are built. Waiting on WS1 to confirm if they need ArcGIS feature layers or vector tiles instead.
@@ -164,6 +160,8 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - [x] CORS origins configurable via env var
 - [x] Production guard on seed scripts
 - [x] openapi.json CI sync check
+- [x] Rate limiting on `/auth/login` (slowapi, 5/min per IP)
+- [x] Refactored `contacts.py` and `rules.py` to service layer + `response_model`
 
 ## Breaking API Changes
 - **`POST /lookup` — `material` field is now optional** (was required). Clients that omitted `material` previously got 422; now they get results filtered to material-agnostic rules only. Update frontend callers if they relied on the 422 for validation.

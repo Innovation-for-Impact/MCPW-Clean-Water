@@ -13,6 +13,12 @@ class RuleCreate(BaseModel):
     legal_citation: str | None = None
 
 
+class RuleBrief(BaseModel):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
 class RuleResponse(BaseModel):
     id: int
     jurisdiction_type: str

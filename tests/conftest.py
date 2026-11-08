@@ -162,6 +162,15 @@ _events_mod.async_session_factory = async_session_test
 
 
 @pytest_asyncio.fixture(autouse=True)
+async def reset_rate_limiter():
+    """Clear rate limiter state between tests to prevent cross-test pollution."""
+    from src.api.rate_limit import limiter
+
+    yield
+    limiter.reset()
+
+
+@pytest_asyncio.fixture(autouse=True)
 async def setup_database():
     """Create all tables before each test, drop after.
 
