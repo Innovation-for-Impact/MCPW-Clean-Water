@@ -55,6 +55,11 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 
 # Benchmark spatial queries (requires PostGIS with loaded data)
 SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.benchmark_spatial
+
+# Quarterly GIS data refresh (download + clip + reload all layers)
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.refresh_gis_data
+DATABASE_URL="..." python -m scripts.refresh_gis_data --dry-run        # preview only
+DATABASE_URL="..." python -m scripts.refresh_gis_data --skip-download  # reload from existing data
 ```
 
 ## Architecture
@@ -77,13 +82,14 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 - **CERCLA RQ**: `src/services/cercla.py` — `check_federal_reporting_required` checks spill against 40 CFR 302.4 thresholds
 - **Contact verification**: `src/services/contact_verification.py` — `check_all_contacts`, `get_verification_summary` for admin reporting
 - **Webhook delivery**: `src/models/webhook_delivery.py` — tracks delivery attempts, retries, dead-letter status
-- **Rate limiting**: `src/api/rate_limit.py` — slowapi limiter with `X-Forwarded-For` support
+- **Rate limiting**: `src/api/rate_limit.py` — slowapi limiter, trusts `X-Forwarded-For` only when `TRUSTED_PROXY=true`
 - **Alembic config**: `alembic.ini` sets `script_location = src/alembic`
 
 ### Models (all inherit from `Base` in `src/models/database.py`)
 - `incident.py` — Geography POINT for spill location
 - `jurisdiction.py` — Geography MULTIPOLYGON for jurisdiction boundaries
 - `waterway.py` — Geography LINESTRING for waterways/downstream tracing
+- `webhook_delivery.py` — webhook delivery tracking (attempts, retries, dead-letter)
 - `user.py`, `event.py`, `webhook.py`, `contact.py`, `rule.py`, `association.py`
 
 ### API Endpoints
@@ -119,7 +125,8 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - `LOG_LEVEL` — optional, default `INFO` (DEBUG, INFO, WARNING, ERROR)
 - `LOG_FORMAT` — optional, default `text` (set to `json` for structured JSON logs)
 - `CORS_ORIGINS` — optional, comma-separated allowed origins (defaults to `localhost:3000,localhost:5173`)
-- `ENVIRONMENT` — optional, set to `production` to block dev seed scripts from running
+- `ENVIRONMENT` — optional, set to `production` to block dev seed scripts and require `--confirm` on GIS refresh
+- `TRUSTED_PROXY` — optional, set to `true` when behind a reverse proxy to trust `X-Forwarded-For` for rate limiting
 
 ## Dev Users (seeded via `python -m scripts.seed_users`)
 - `admin` / `admin123` (admin role)
@@ -167,7 +174,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - [x] CORS origins configurable via env var
 - [x] Production guard on seed scripts
 - [x] openapi.json CI sync check
-- [x] Rate limiting on `/auth/login` (slowapi, 5/min per IP, X-Forwarded-For aware)
+- [x] Rate limiting on `/auth/login` (slowapi, 5/min per IP, proxy-safe via `TRUSTED_PROXY` env var)
 - [x] Refactored `contacts.py` and `rules.py` to service layer + `response_model`
 - [x] Webhook retry + dead-letter queue (`WebhookDelivery` model, exponential backoff, 6 attempts max)
 - [x] Unit conversion service (`src/services/units.py` — gal/bbl/L/lb conversions + material categorization)
