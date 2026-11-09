@@ -55,6 +55,11 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 
 # Benchmark spatial queries (requires PostGIS with loaded data)
 SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.benchmark_spatial
+
+# Quarterly GIS data refresh (download + clip + reload all layers)
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.refresh_gis_data
+DATABASE_URL="..." python -m scripts.refresh_gis_data --dry-run        # preview only
+DATABASE_URL="..." python -m scripts.refresh_gis_data --skip-download  # reload from existing data
 ```
 
 ## Architecture
@@ -73,12 +78,18 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 - **Spatial service**: `src/services/spatial.py` — `lookup_jurisdictions`, `find_nearest_water`, `trace_downstream` (low-level PostGIS queries used by lookup and spatial tests)
 - **Rules engine**: `src/services/rules_engine.py` — `evaluate_rules` matches jurisdiction layers + material + quantity against rules, returns deduplicated contacts sorted by priority
 - **Lookup orchestration**: `src/services/lookup.py` — `run_lookup` ties spatial queries + rules engine together for `POST /lookup`
+- **Unit conversion**: `src/services/units.py` — `convert_to_gallons`, `convert_units`, `categorize_material` for intake parsing
+- **CERCLA RQ**: `src/services/cercla.py` — `check_federal_reporting_required` checks spill against 40 CFR 302.4 thresholds
+- **Contact verification**: `src/services/contact_verification.py` — `check_all_contacts`, `get_verification_summary` for admin reporting
+- **Webhook delivery**: `src/models/webhook_delivery.py` — tracks delivery attempts, retries, dead-letter status
+- **Rate limiting**: `src/api/rate_limit.py` — slowapi limiter, trusts `X-Forwarded-For` only when `TRUSTED_PROXY=true`
 - **Alembic config**: `alembic.ini` sets `script_location = src/alembic`
 
 ### Models (all inherit from `Base` in `src/models/database.py`)
 - `incident.py` — Geography POINT for spill location
 - `jurisdiction.py` — Geography MULTIPOLYGON for jurisdiction boundaries
 - `waterway.py` — Geography LINESTRING for waterways/downstream tracing
+- `webhook_delivery.py` — webhook delivery tracking (attempts, retries, dead-letter)
 - `user.py`, `event.py`, `webhook.py`, `contact.py`, `rule.py`, `association.py`
 
 ### API Endpoints
@@ -86,7 +97,7 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 - **Auth** (`auth.py`): `POST /auth/login` (rate-limited: 5/min per IP), `POST /auth/register` (admin only)
 - **Layers** (`layers.py`): Public GeoJSON endpoints for WS1 map overlays — `GET /layers/jurisdictions` (list layers), `GET /layers/jurisdictions/{layer_name}` (FeatureCollection), `GET /layers/waterways` (flowlines with `named_only`/pagination params). No auth required.
 - **Lookup** (`lookup.py`): `POST /lookup` — orchestrates WS3 spatial query + WS4 rules engine via `src/services/lookup.py`. Requires responder+.
-- **Incidents** (`incidents.py`): `POST /incidents` (responder+), `GET /incidents/{id}` (viewer+) — saves incident + emits event
+- **Incidents** (`incidents.py`): `GET /incidents` (viewer+, filterable by status/material/water_body/date range), `POST /incidents` (responder+), `GET /incidents/{id}` (viewer+) — saves incident + emits event
 - **Events** (`events.py`): `GET /events` (viewer+) — poll incident events for dashboard/Accela
 - **Contacts** (`contacts.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — service layer in `src/services/contacts.py`, `response_model` via Pydantic
 - **Rules** (`rules.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — service layer in `src/services/rules.py`, `response_model` via Pydantic
@@ -105,7 +116,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 
 **Important**: bcrypt is pinned to 4.0.1 because passlib is incompatible with bcrypt 5.x.
 
-**Test status**: 138 unit tests pass on SQLite (including 8 rules engine scenarios + rate limit test) + 38 spatial tests on PostGIS + 9 PostGIS e2e tests. **185 total** (2 spatial skipped for TC10 terminal segment).
+**Test status**: 175 unit tests pass on SQLite (including 8 rules engine scenarios, rate limit, units, CERCLA, incidents list, webhook delivery tests) + 38 spatial tests on PostGIS + 9 PostGIS e2e tests. **222 total** (2 spatial skipped for TC10 terminal segment).
 
 ## Environment Variables
 - `SECRET_KEY` — **required**, used for JWT signing
@@ -114,7 +125,8 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - `LOG_LEVEL` — optional, default `INFO` (DEBUG, INFO, WARNING, ERROR)
 - `LOG_FORMAT` — optional, default `text` (set to `json` for structured JSON logs)
 - `CORS_ORIGINS` — optional, comma-separated allowed origins (defaults to `localhost:3000,localhost:5173`)
-- `ENVIRONMENT` — optional, set to `production` to block dev seed scripts from running
+- `ENVIRONMENT` — optional, set to `production` to block dev seed scripts and require `--confirm` on GIS refresh
+- `TRUSTED_PROXY` — optional, set to `true` when behind a reverse proxy to trust `X-Forwarded-For` for rate limiting
 
 ## Dev Users (seeded via `python -m scripts.seed_users`)
 - `admin` / `admin123` (admin role)
@@ -145,11 +157,13 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 ## Outstanding Work
 
 ### Blocked — Waiting on External Teams
-3. **WS5 Phase 4.2: Pilot readiness** — waiting on WS6 team to deliver scenario definitions for end-to-end validation.
-4. **WS3 Phase 3.2: Layer format coordination** — GeoJSON endpoints are built. Waiting on WS1 to confirm if they need ArcGIS feature layers or vector tiles instead.
-5. **Obtain drain district + storm sewer outfall data** — requires manual outreach to Macomb County Public Works (public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285). Once received, add to data pipeline and load into PostGIS.
+1. **WS5 Phase 4.2: Pilot readiness** — waiting on WS6 team to deliver scenario definitions for end-to-end validation.
+2. **WS3 Phase 3.2: Layer format coordination** — GeoJSON endpoints are built. Waiting on WS1 to confirm if they need ArcGIS feature layers or vector tiles instead.
+3. **Obtain drain district + storm sewer outfall data** — requires manual outreach to Macomb County Public Works (public.works@macombgov.org / 586-469-5325, GIS: gis.questions@macombgov.org / 586-469-5285). Once received, add to data pipeline and load into PostGIS.
+4. **WS4 contact verification** — 14 municipal contacts sourced from 2018 data need phone re-verification before pilot. Requires manual calls.
+5. **WS1/WS2/WS6 — UI workstreams** — all three are planning-only, no code started. WS1 (map) needs ArcGIS API key tier confirmation. WS2 (intake form) needs WS5 schema agreement. WS6 (results UI + deployment) needs WS1–WS5 integration-ready.
 
-### Done (This Branch)
+### Done
 - [x] WS4 rules engine + contact directory + seed data (35 rules, 26 contacts)
 - [x] CI pipeline (lint, unit tests, spatial tests)
 - [x] Spatial benchmark — all targets PASS
@@ -160,8 +174,14 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - [x] CORS origins configurable via env var
 - [x] Production guard on seed scripts
 - [x] openapi.json CI sync check
-- [x] Rate limiting on `/auth/login` (slowapi, 5/min per IP)
+- [x] Rate limiting on `/auth/login` (slowapi, 5/min per IP, proxy-safe via `TRUSTED_PROXY` env var)
 - [x] Refactored `contacts.py` and `rules.py` to service layer + `response_model`
+- [x] Webhook retry + dead-letter queue (`WebhookDelivery` model, exponential backoff, 6 attempts max)
+- [x] Unit conversion service (`src/services/units.py` — gal/bbl/L/lb conversions + material categorization)
+- [x] CERCLA RQ lookup tables (`src/services/cercla.py` — 40 CFR 302.4 thresholds for 17 substances)
+- [x] Historical incident query (`GET /incidents` — filter by status, material, water_body, date range)
+- [x] Contact verification service (`src/services/contact_verification.py` — staleness, phone/email validation)
+- [x] GIS data quarterly refresh script (`scripts/refresh_gis_data.py` — full pipeline orchestration)
 
 ## Breaking API Changes
 - **`POST /lookup` — `material` field is now optional** (was required). Clients that omitted `material` previously got 422; now they get results filtered to material-agnostic rules only. Update frontend callers if they relied on the 422 for validation.
