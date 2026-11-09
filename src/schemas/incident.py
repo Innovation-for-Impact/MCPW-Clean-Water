@@ -34,3 +34,18 @@ class Incident(IncidentCreate):
     status: IncidentStatus
 
     model_config = {"from_attributes": True}
+
+
+class IncidentSummary(BaseModel):
+    """Lightweight incident representation for list endpoints."""
+
+    id: uuid.UUID
+    water_body: str
+    material: str
+    quantity_gallons: float | None = None
+    status: str
+    reporter_name: str
+    time_observed: datetime
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

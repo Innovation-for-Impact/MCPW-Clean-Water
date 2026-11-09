@@ -8,6 +8,7 @@ from src.models.rule import Rule
 from src.models.user import User
 from src.models.waterway import Waterway
 from src.models.webhook import Webhook
+from src.models.webhook_delivery import WebhookDelivery
 
 __all__ = [
     "Base",
@@ -20,5 +21,6 @@ __all__ = [
     "User",
     "Waterway",
     "Webhook",
+    "WebhookDelivery",
     "incident_jurisdictions",
 ]

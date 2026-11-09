@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from geoalchemy2 import Geometry
 from geoalchemy2.functions import ST_X, ST_Y
 from sqlalchemy import cast, select
@@ -12,7 +13,7 @@ from src.api.dependencies import RequireRole, get_db
 from src.models.incident import Incident as IncidentModel
 from src.models.user import User
 from src.schemas.enums import IncidentStatus
-from src.schemas.incident import Incident, IncidentCreate
+from src.schemas.incident import Incident, IncidentCreate, IncidentSummary
 from src.services.events import dispatch_webhooks
 from src.services.incidents import create_incident
 
@@ -61,6 +62,37 @@ async def post_incident(
         status_code=201,
         background=task,
     )
+
+
+@router.get("/incidents", response_model=list[IncidentSummary])
+async def list_incidents(
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(RequireRole("viewer")),
+    status: str | None = Query(default=None, description="Filter by status (open, closed, under_review)"),
+    material: str | None = Query(default=None, description="Filter by material type"),
+    water_body: str | None = Query(default=None, description="Filter by water body type"),
+    since: datetime | None = Query(default=None, description="Only incidents created after this datetime"),
+    until: datetime | None = Query(default=None, description="Only incidents created before this datetime"),
+    limit: int = Query(default=50, le=500),
+    offset: int = Query(default=0, ge=0),
+):
+    """List incidents with optional filters for analytics and reporting."""
+    stmt = select(IncidentModel).order_by(IncidentModel.created_at.desc())
+
+    if status:
+        stmt = stmt.where(IncidentModel.status == status)
+    if material:
+        stmt = stmt.where(IncidentModel.material == material)
+    if water_body:
+        stmt = stmt.where(IncidentModel.water_body == water_body)
+    if since:
+        stmt = stmt.where(IncidentModel.created_at >= since)
+    if until:
+        stmt = stmt.where(IncidentModel.created_at <= until)
+
+    stmt = stmt.limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
 
 @router.get("/incidents/{incident_id}", response_model=Incident)
