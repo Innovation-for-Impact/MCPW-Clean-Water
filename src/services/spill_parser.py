@@ -100,17 +100,6 @@ _COORD_RE = re.compile(
 )
 
 # ---------------------------------------------------------------------------
-# Time patterns
-# ---------------------------------------------------------------------------
-_RELATIVE_TIME_PATTERNS: list[tuple[re.Pattern, int]] = [
-    (re.compile(r"\b(\d+)\s+hours?\s+ago\b", re.I), 0),  # group(1) = hours
-    (re.compile(r"\b(\d+)\s+minutes?\s+ago\b", re.I), 0),  # handled separately
-    (re.compile(r"\bthis\s+morning\b", re.I), -1),  # sentinel: use 8am today
-    (re.compile(r"\byesterday\b", re.I), -2),  # sentinel: use yesterday noon
-    (re.compile(r"\bjust\s+now\b", re.I), -3),  # sentinel: use now
-]
-
-# ---------------------------------------------------------------------------
 # Material detail extraction — specific substance name
 # ---------------------------------------------------------------------------
 _DETAIL_SUBSTANCES = [

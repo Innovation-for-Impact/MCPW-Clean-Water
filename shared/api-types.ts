@@ -1,5 +1,5 @@
 // Auto-generated from OpenAPI schema — do not edit manually.
-// Generated from openapi.json (28 schemas)
+// Generated from openapi.json (29 schemas)
 
 export interface Contact {
   agency: string;
@@ -136,6 +136,18 @@ export type MaterialType = "oil_fuel" | "chemical_hazmat" | "sewage" | "unknown_
 
 export interface ParseRequest {
   text: string;
+}
+
+export interface ParseResponse {
+  water_body?: string | null;
+  material?: string | null;
+  material_detail?: string | null;
+  quantity?: number | null;
+  quantity_unit?: string | null;
+  quantity_gallons?: number | null;
+  location?: Record<string, unknown> | null;
+  address_hint?: string | null;
+  time_observed?: string | null;
 }
 
 export type QuantityUnit = "gal" | "bbl" | "L" | "lb";

@@ -6,8 +6,11 @@ keywords from shared/material-categories.json (shared with frontend WS2).
 """
 
 import json
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Conversion factors TO gallons
 _TO_GALLONS: dict[str, float] = {
@@ -25,7 +28,10 @@ _CATEGORIES_PATH = Path(__file__).resolve().parent.parent.parent / "shared" / "m
 _MATERIAL_CATEGORIES: dict[str, list[str]] = {}
 if _CATEGORIES_PATH.exists():
     _raw = json.loads(_CATEGORIES_PATH.read_text())
+    # Key order is significant — first matching category wins in categorize_material()
     _MATERIAL_CATEGORIES = {k: v for k, v in _raw.items() if not k.startswith("_") and isinstance(v, list)}
+else:
+    logger.warning("material-categories.json not found at %s — all materials will be 'unknown_other'", _CATEGORIES_PATH)
 
 # Build regex patterns from the JSON keywords
 _MATERIAL_PATTERNS: list[tuple[re.Pattern, str]] = []

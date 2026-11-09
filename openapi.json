@@ -163,7 +163,7 @@
                     "Incidents"
                 ],
                 "summary": "Parse Incident Text",
-                "description": "Parse free-text spill description into structured incident fields.\n\nReturns a dict of extracted fields (water_body, material, quantity, etc.).\nFrontend can use this for auto-fill during intake.",
+                "description": "Parse free-text spill description into structured incident fields.\n\nReturns extracted fields (water_body, material, quantity, etc.).\nFrontend can use this for auto-fill during intake.",
                 "operationId": "parse_incident_text_incidents_parse_post",
                 "requestBody": {
                     "content": {
@@ -180,7 +180,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ParseResponse"
+                                }
                             }
                         }
                     },
@@ -1929,6 +1931,7 @@
                 "properties": {
                     "text": {
                         "type": "string",
+                        "maxLength": 5000,
                         "title": "Text"
                     }
                 },
@@ -1937,6 +1940,112 @@
                     "text"
                 ],
                 "title": "ParseRequest"
+            },
+            "ParseResponse": {
+                "properties": {
+                    "water_body": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Water Body"
+                    },
+                    "material": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Material"
+                    },
+                    "material_detail": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Material Detail"
+                    },
+                    "quantity": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity"
+                    },
+                    "quantity_unit": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Unit"
+                    },
+                    "quantity_gallons": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Gallons"
+                    },
+                    "location": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Location"
+                    },
+                    "address_hint": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Address Hint"
+                    },
+                    "time_observed": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Time Observed"
+                    }
+                },
+                "type": "object",
+                "title": "ParseResponse"
             },
             "QuantityUnit": {
                 "type": "string",
