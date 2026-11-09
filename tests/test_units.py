@@ -18,7 +18,7 @@ class TestConvertToGallons:
 
     def test_pounds_to_gallons(self):
         result = convert_to_gallons(100, "lb")
-        assert 11.0 <= result <= 13.0
+        assert 14.0 <= result <= 15.0  # 100 lb / 7 lb/gal ≈ 14.29
 
     def test_unknown_unit_raises(self):
         with pytest.raises(ValueError, match="Unknown unit"):

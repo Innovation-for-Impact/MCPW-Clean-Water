@@ -12,7 +12,7 @@ _TO_GALLONS: dict[str, float] = {
     "gal": 1.0,
     "bbl": 42.0,  # US petroleum barrel
     "L": 0.264172,
-    "lb": 0.12,  # approximate for petroleum products (~7.1 lb/gal → 1/7.1 ≈ 0.14; using 0.12 as conservative)
+    "lb": 1 / 7.0,  # approximate for petroleum products (~7 lb/gal); matches cercla.py
 }
 
 # Conversion factors FROM gallons
