@@ -69,6 +69,16 @@ async def test_login_token_contains_role(client, seed_users):
 
 
 @pytest.mark.asyncio
+async def test_login_rate_limited(client, seed_users):
+    """Exceeding 5 requests/minute on /auth/login returns 429."""
+    payload = {"username": "test_admin", "password": "wrong"}
+    for _ in range(5):
+        await client.post("/auth/login", json=payload)
+    resp = await client.post("/auth/login", json=payload)
+    assert resp.status_code == 429
+
+
+@pytest.mark.asyncio
 async def test_register_as_admin(client, auth_headers):
     resp = await client.post(
         "/auth/register",

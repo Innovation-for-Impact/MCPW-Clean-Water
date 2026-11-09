@@ -2,8 +2,11 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from src.api.middleware import RequestLoggingMiddleware
+from src.api.rate_limit import limiter
 from src.api.routes import (
     auth,
     contacts,
@@ -24,6 +27,9 @@ app = FastAPI(
     description="Backend API for the Macomb County Public Works Clean Water incident response system.",
     version="1.0.0",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 _default_origins = ["http://localhost:3000", "http://localhost:5173"]
 _cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()] or _default_origins
