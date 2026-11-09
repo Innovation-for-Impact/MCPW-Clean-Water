@@ -157,6 +157,53 @@
                 ]
             }
         },
+        "/incidents/parse": {
+            "post": {
+                "tags": [
+                    "Incidents"
+                ],
+                "summary": "Parse Incident Text",
+                "description": "Parse free-text spill description into structured incident fields.\n\nReturns extracted fields (water_body, material, quantity, etc.).\nFrontend can use this for auto-fill during intake.",
+                "operationId": "parse_incident_text_incidents_parse_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ParseRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ParseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/incidents": {
             "post": {
                 "tags": [
@@ -164,15 +211,20 @@
                 ],
                 "summary": "Post Incident",
                 "operationId": "post_incident_incidents_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
                 "requestBody": {
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/IncidentCreate"
                             }
                         }
-                    },
-                    "required": true
+                    }
                 },
                 "responses": {
                     "201": {
@@ -195,12 +247,162 @@
                             }
                         }
                     }
-                },
+                }
+            },
+            "get": {
+                "tags": [
+                    "Incidents"
+                ],
+                "summary": "List Incidents",
+                "description": "List incidents with optional filters for analytics and reporting.",
+                "operationId": "list_incidents_incidents_get",
                 "security": [
                     {
                         "HTTPBearer": []
                     }
-                ]
+                ],
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by status (open, closed, under_review)",
+                            "title": "Status"
+                        },
+                        "description": "Filter by status (open, closed, under_review)"
+                    },
+                    {
+                        "name": "material",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by material type",
+                            "title": "Material"
+                        },
+                        "description": "Filter by material type"
+                    },
+                    {
+                        "name": "water_body",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by water body type",
+                            "title": "Water Body"
+                        },
+                        "description": "Filter by water body type"
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only incidents created after this datetime",
+                            "title": "Since"
+                        },
+                        "description": "Only incidents created after this datetime"
+                    },
+                    {
+                        "name": "until",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Only incidents created before this datetime",
+                            "title": "Until"
+                        },
+                        "description": "Only incidents created before this datetime"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 500,
+                            "default": 50,
+                            "title": "Limit"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0,
+                            "title": "Offset"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/IncidentSummary"
+                                    },
+                                    "title": "Response List Incidents Incidents Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/incidents/{incident_id}": {
@@ -524,7 +726,13 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ContactResponse"
+                                    },
+                                    "title": "Response List Contacts Contacts Get"
+                                }
                             }
                         }
                     },
@@ -566,7 +774,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContactBrief"
+                                }
                             }
                         }
                     },
@@ -669,7 +879,13 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RuleResponse"
+                                    },
+                                    "title": "Response List Rules Rules Get"
+                                }
                             }
                         }
                     },
@@ -711,7 +927,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/RuleBrief"
+                                }
                             }
                         }
                     },
@@ -1005,7 +1223,26 @@
                     "source_url",
                     "last_verified"
                 ],
-                "title": "Contact"
+                "title": "Contact",
+                "description": "Contact schema used in lookup results and event payloads (no id)."
+            },
+            "ContactBrief": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "agency": {
+                        "type": "string",
+                        "title": "Agency"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "agency"
+                ],
+                "title": "ContactBrief"
             },
             "ContactCreate": {
                 "properties": {
@@ -1110,6 +1347,116 @@
                     "last_verified"
                 ],
                 "title": "ContactCreate"
+            },
+            "ContactResponse": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "agency": {
+                        "type": "string",
+                        "title": "Agency"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
+                    },
+                    "jurisdiction_id": {
+                        "type": "string",
+                        "title": "Jurisdiction Id"
+                    },
+                    "jurisdiction_scope": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Jurisdiction Scope"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "title": "Phone"
+                    },
+                    "after_hours_phone": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "After Hours Phone"
+                    },
+                    "email": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Email"
+                    },
+                    "hours": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Hours"
+                    },
+                    "reporting_deadline": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reporting Deadline"
+                    },
+                    "source_url": {
+                        "type": "string",
+                        "title": "Source Url"
+                    },
+                    "last_verified": {
+                        "type": "string",
+                        "format": "date",
+                        "title": "Last Verified"
+                    },
+                    "notes": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Notes"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "agency",
+                    "role",
+                    "jurisdiction_id",
+                    "phone",
+                    "source_url",
+                    "last_verified"
+                ],
+                "title": "ContactResponse"
             },
             "ContactRole": {
                 "type": "string",
@@ -1353,6 +1700,64 @@
                 ],
                 "title": "IncidentStatus"
             },
+            "IncidentSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "water_body": {
+                        "type": "string",
+                        "title": "Water Body"
+                    },
+                    "material": {
+                        "type": "string",
+                        "title": "Material"
+                    },
+                    "quantity_gallons": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Gallons"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "reporter_name": {
+                        "type": "string",
+                        "title": "Reporter Name"
+                    },
+                    "time_observed": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Time Observed"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "water_body",
+                    "material",
+                    "status",
+                    "reporter_name",
+                    "time_observed",
+                    "created_at"
+                ],
+                "title": "IncidentSummary",
+                "description": "Lightweight incident representation for list endpoints."
+            },
             "Jurisdiction": {
                 "properties": {
                     "layer": {
@@ -1522,6 +1927,126 @@
                 ],
                 "title": "MaterialType"
             },
+            "ParseRequest": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "maxLength": 5000,
+                        "title": "Text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "ParseRequest"
+            },
+            "ParseResponse": {
+                "properties": {
+                    "water_body": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Water Body"
+                    },
+                    "material": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Material"
+                    },
+                    "material_detail": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Material Detail"
+                    },
+                    "quantity": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity"
+                    },
+                    "quantity_unit": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Unit"
+                    },
+                    "quantity_gallons": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Quantity Gallons"
+                    },
+                    "location": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Location"
+                    },
+                    "address_hint": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Address Hint"
+                    },
+                    "time_observed": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Time Observed"
+                    }
+                },
+                "type": "object",
+                "title": "ParseResponse"
+            },
             "QuantityUnit": {
                 "type": "string",
                 "enum": [
@@ -1553,6 +2078,19 @@
                     "password"
                 ],
                 "title": "RegisterRequest"
+            },
+            "RuleBrief": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id"
+                ],
+                "title": "RuleBrief"
             },
             "RuleCreate": {
                 "properties": {
@@ -1636,6 +2174,94 @@
                     "contact_id"
                 ],
                 "title": "RuleCreate"
+            },
+            "RuleResponse": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "jurisdiction_type": {
+                        "type": "string",
+                        "title": "Jurisdiction Type"
+                    },
+                    "water_body": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Water Body"
+                    },
+                    "material": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Material"
+                    },
+                    "size_threshold": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Size Threshold"
+                    },
+                    "contact_id": {
+                        "type": "integer",
+                        "title": "Contact Id"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "title": "Required"
+                    },
+                    "deadline": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deadline"
+                    },
+                    "priority": {
+                        "type": "integer",
+                        "title": "Priority"
+                    },
+                    "legal_citation": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Legal Citation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "jurisdiction_type",
+                    "contact_id",
+                    "required",
+                    "priority"
+                ],
+                "title": "RuleResponse"
             },
             "Token": {
                 "properties": {

@@ -1,0 +1,287 @@
+[
+    {
+        "id": "TC01",
+        "description": "Full petroleum spill — Environmental Action Report scenario (Vermander drain)",
+        "input": "about 50 gallons of diesel in the Vermander drain near Clinton Township",
+        "expected": {
+            "water_body": "county_drain",
+            "material": "oil_fuel",
+            "material_detail": "diesel",
+            "quantity": 50.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 50.0,
+            "address_hint": "Clinton Township"
+        }
+    },
+    {
+        "id": "TC02",
+        "description": "Oil sheen in Clinton River",
+        "input": "oil sheen observed on the Clinton River near Mount Clemens",
+        "expected": {
+            "water_body": "clinton_river",
+            "material": "oil_fuel",
+            "material_detail": "oil sheen",
+            "address_hint": "Mount Clemens"
+        }
+    },
+    {
+        "id": "TC03",
+        "description": "Gasoline in Lake St. Clair — large quantity in barrels",
+        "input": "approximately 3 barrels of gasoline leaking into Lake St. Clair near Harrison Township",
+        "expected": {
+            "water_body": "lake_st_clair",
+            "material": "oil_fuel",
+            "material_detail": "gasoline",
+            "quantity": 3.0,
+            "quantity_unit": "bbl",
+            "quantity_gallons": 126.0,
+            "address_hint": "Harrison Township"
+        }
+    },
+    {
+        "id": "TC04",
+        "description": "Sewage overflow — SSO in storm sewer",
+        "input": "sanitary sewer overflow into storm drain at Sterling Heights, about 200 gallons of sewage",
+        "expected": {
+            "water_body": "storm_sewer",
+            "material": "sewage",
+            "material_detail": "sewer overflow",
+            "quantity": 200.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 200.0,
+            "address_hint": "Sterling Heights"
+        }
+    },
+    {
+        "id": "TC05",
+        "description": "Chemical hazmat — chlorine in tributary",
+        "input": "chlorine leak into Bear Creek, less than 10 gallons near Shelby Township",
+        "expected": {
+            "water_body": "tributary",
+            "material": "chemical_hazmat",
+            "material_detail": "chlorine",
+            "quantity": 10.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 10.0,
+            "address_hint": "Shelby Township"
+        }
+    },
+    {
+        "id": "TC06",
+        "description": "Hydraulic fluid in Big Beaver drain",
+        "input": "hydraulic fluid spill into Big Beaver drain, approximately 5 gallons",
+        "expected": {
+            "water_body": "county_drain",
+            "material": "oil_fuel",
+            "material_detail": "hydraulic fluid",
+            "quantity": 5.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 5.0
+        }
+    },
+    {
+        "id": "TC07",
+        "description": "Antifreeze in catch basin — MS4 system",
+        "input": "antifreeze dumped into catch basin near Warren, about 2 gallons",
+        "expected": {
+            "water_body": "storm_sewer",
+            "material": "chemical_hazmat",
+            "material_detail": "antifreeze",
+            "quantity": 2.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 2.0,
+            "address_hint": "Warren"
+        }
+    },
+    {
+        "id": "TC08",
+        "description": "Motor oil in Plum Brook tributary",
+        "input": "motor oil discharge into Plum Brook about 15 gallons near Macomb Township",
+        "expected": {
+            "water_body": "tributary",
+            "material": "oil_fuel",
+            "material_detail": "motor oil",
+            "quantity": 15.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 15.0,
+            "address_hint": "Macomb Township"
+        }
+    },
+    {
+        "id": "TC09",
+        "description": "Septic failure — sewage routing",
+        "input": "failing septic system leaking into Red Run ditch near Roseville",
+        "expected": {
+            "water_body": "tributary",
+            "material": "sewage",
+            "material_detail": "septic",
+            "address_hint": "Roseville"
+        }
+    },
+    {
+        "id": "TC10",
+        "description": "Paint spill in Chapaton drain",
+        "input": "about 30 gallons of paint dumped into Chapaton drain near Chesterfield Township",
+        "expected": {
+            "water_body": "county_drain",
+            "material": "chemical_hazmat",
+            "material_detail": "paint",
+            "quantity": 30.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 30.0,
+            "address_hint": "Chesterfield Township"
+        }
+    },
+    {
+        "id": "TC11",
+        "description": "Quantity in liters",
+        "input": "approximately 100 liters of diesel in county drain near Utica",
+        "expected": {
+            "water_body": "county_drain",
+            "material": "oil_fuel",
+            "material_detail": "diesel",
+            "quantity": 100.0,
+            "quantity_unit": "L",
+            "quantity_gallons": 26.4172,
+            "address_hint": "Utica"
+        }
+    },
+    {
+        "id": "TC12",
+        "description": "Quantity in pounds",
+        "input": "about 50 lbs of fertilizer washed into stream near New Baltimore",
+        "expected": {
+            "water_body": "tributary",
+            "material": "chemical_hazmat",
+            "material_detail": "fertilizer",
+            "quantity": 50.0,
+            "quantity_unit": "lb",
+            "quantity_gallons": 7.1429,
+            "address_hint": "New Baltimore"
+        }
+    },
+    {
+        "id": "TC13",
+        "description": "Coordinates provided",
+        "input": "oil plume at 42.5970, -82.9375 about 20 gallons",
+        "expected": {
+            "material": "oil_fuel",
+            "material_detail": "oil plume",
+            "quantity": 20.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 20.0,
+            "location": {"lat": 42.5970, "lon": -82.9375}
+        }
+    },
+    {
+        "id": "TC14",
+        "description": "Time — hours ago",
+        "input": "diesel spill in Clinton River about 3 hours ago, 10 gallons",
+        "expected": {
+            "water_body": "clinton_river",
+            "material": "oil_fuel",
+            "material_detail": "diesel",
+            "quantity": 10.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 10.0,
+            "has_time_observed": true
+        }
+    },
+    {
+        "id": "TC15",
+        "description": "Time — yesterday",
+        "input": "gasoline leak into stormwater system yesterday near Fraser",
+        "expected": {
+            "water_body": "storm_sewer",
+            "material": "oil_fuel",
+            "material_detail": "gasoline",
+            "address_hint": "Fraser",
+            "has_time_observed": true
+        }
+    },
+    {
+        "id": "TC16",
+        "description": "Minimal input — unknown material",
+        "input": "suspicious substance in creek near Eastpointe",
+        "expected": {
+            "water_body": "tributary",
+            "material": "unknown_other",
+            "address_hint": "Eastpointe"
+        }
+    },
+    {
+        "id": "TC17",
+        "description": "Wastewater in North Branch tributary",
+        "input": "wastewater discharge into North Branch about 500 gallons near Romeo",
+        "expected": {
+            "water_body": "tributary",
+            "material": "sewage",
+            "material_detail": "wastewater",
+            "quantity": 500.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 500.0,
+            "address_hint": "Romeo"
+        }
+    },
+    {
+        "id": "TC18",
+        "description": "Pesticide in stormwater system",
+        "input": "pesticide runoff into storm sewer near Center Line, approximately 5 gallons",
+        "expected": {
+            "water_body": "storm_sewer",
+            "material": "chemical_hazmat",
+            "material_detail": "pesticide",
+            "quantity": 5.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 5.0,
+            "address_hint": "Center Line"
+        }
+    },
+    {
+        "id": "TC19",
+        "description": "Dead fish report — unknown/other category",
+        "input": "dead fish found along Lake St. Clair shoreline near St. Clair Shores",
+        "expected": {
+            "water_body": "lake_st_clair",
+            "material": "unknown_other",
+            "address_hint": "St. Clair Shores"
+        }
+    },
+    {
+        "id": "TC20",
+        "description": "Time — just now",
+        "input": "fuel oil spill into ditch just now, about 100 gallons near Richmond",
+        "expected": {
+            "water_body": "tributary",
+            "material": "oil_fuel",
+            "material_detail": "fuel oil",
+            "quantity": 100.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 100.0,
+            "address_hint": "Richmond",
+            "has_time_observed": true
+        }
+    },
+    {
+        "id": "TC21",
+        "description": "Sewer overflow with SSO keyword",
+        "input": "sewer overflow at Lenox Township stormwater outfall about 1000 gallons of effluent",
+        "expected": {
+            "water_body": "storm_sewer",
+            "material": "sewage",
+            "material_detail": "sewer overflow",
+            "quantity": 1000.0,
+            "quantity_unit": "gal",
+            "quantity_gallons": 1000.0,
+            "address_hint": "Lenox Township"
+        }
+    },
+    {
+        "id": "TC22",
+        "description": "Empty input",
+        "input": "",
+        "expected": {
+            "material": "unknown_other"
+        }
+    }
+]

@@ -60,6 +60,9 @@ SECRET_KEY=test-key DATABASE_URL="postgresql+asyncpg://postgres:postgres@localho
 DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/cleanwater" python -m scripts.refresh_gis_data
 DATABASE_URL="..." python -m scripts.refresh_gis_data --dry-run        # preview only
 DATABASE_URL="..." python -m scripts.refresh_gis_data --skip-download  # reload from existing data
+
+# Generate TypeScript types from OpenAPI schema
+SECRET_KEY=test-key DATABASE_URL="sqlite+aiosqlite:///" python -m scripts.generate_types  # outputs shared/api-types.ts
 ```
 
 ## Architecture
@@ -78,7 +81,9 @@ DATABASE_URL="..." python -m scripts.refresh_gis_data --skip-download  # reload 
 - **Spatial service**: `src/services/spatial.py` — `lookup_jurisdictions`, `find_nearest_water`, `trace_downstream` (low-level PostGIS queries used by lookup and spatial tests)
 - **Rules engine**: `src/services/rules_engine.py` — `evaluate_rules` matches jurisdiction layers + material + quantity against rules, returns deduplicated contacts sorted by priority
 - **Lookup orchestration**: `src/services/lookup.py` — `run_lookup` ties spatial queries + rules engine together for `POST /lookup`
-- **Unit conversion**: `src/services/units.py` — `convert_to_gallons`, `convert_units`, `categorize_material` for intake parsing
+- **Spill parser**: `src/services/spill_parser.py` — `parse_spill_text` extracts structured fields from free text (water body, material, quantity, location, time)
+- **Unit conversion**: `src/services/units.py` — `convert_to_gallons`, `convert_units`, `categorize_material` (loads keywords from `shared/material-categories.json`)
+- **Buffer radius**: `src/services/buffer_radius.py` — `compute_buffer_radius` tiered lookup from quantity_gallons to radius_meters
 - **CERCLA RQ**: `src/services/cercla.py` — `check_federal_reporting_required` checks spill against 40 CFR 302.4 thresholds
 - **Contact verification**: `src/services/contact_verification.py` — `check_all_contacts`, `get_verification_summary` for admin reporting
 - **Webhook delivery**: `src/models/webhook_delivery.py` — tracks delivery attempts, retries, dead-letter status
@@ -97,7 +102,7 @@ DATABASE_URL="..." python -m scripts.refresh_gis_data --skip-download  # reload 
 - **Auth** (`auth.py`): `POST /auth/login` (rate-limited: 5/min per IP), `POST /auth/register` (admin only)
 - **Layers** (`layers.py`): Public GeoJSON endpoints for WS1 map overlays — `GET /layers/jurisdictions` (list layers), `GET /layers/jurisdictions/{layer_name}` (FeatureCollection), `GET /layers/waterways` (flowlines with `named_only`/pagination params). No auth required.
 - **Lookup** (`lookup.py`): `POST /lookup` — orchestrates WS3 spatial query + WS4 rules engine via `src/services/lookup.py`. Requires responder+.
-- **Incidents** (`incidents.py`): `GET /incidents` (viewer+, filterable by status/material/water_body/date range), `POST /incidents` (responder+), `GET /incidents/{id}` (viewer+) — saves incident + emits event
+- **Incidents** (`incidents.py`): `POST /incidents/parse` (viewer+, free-text → structured fields), `GET /incidents` (viewer+, filterable by status/material/water_body/date range), `POST /incidents` (responder+), `GET /incidents/{id}` (viewer+) — saves incident + emits event
 - **Events** (`events.py`): `GET /events` (viewer+) — poll incident events for dashboard/Accela
 - **Contacts** (`contacts.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — service layer in `src/services/contacts.py`, `response_model` via Pydantic
 - **Rules** (`rules.py`): CRUD, `GET` viewer+, `POST`/`DELETE` admin — service layer in `src/services/rules.py`, `response_model` via Pydantic
@@ -116,7 +121,7 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 
 **Important**: bcrypt is pinned to 4.0.1 because passlib is incompatible with bcrypt 5.x.
 
-**Test status**: 175 unit tests pass on SQLite (including 8 rules engine scenarios, rate limit, units, CERCLA, incidents list, webhook delivery tests) + 38 spatial tests on PostGIS + 9 PostGIS e2e tests. **222 total** (2 spatial skipped for TC10 terminal segment).
+**Test status**: 207 unit tests pass on SQLite (including 8 rules engine scenarios, 28 spill parser tests, rate limit, units, CERCLA, incidents list, webhook delivery, parse endpoint tests) + 38 spatial tests on PostGIS + 9 PostGIS e2e tests. **254 total** (2 spatial skipped for TC10 terminal segment).
 
 ## Environment Variables
 - `SECRET_KEY` — **required**, used for JWT signing
@@ -182,6 +187,12 @@ Tests use SQLite in-memory via `aiosqlite` (no Docker needed). `tests/conftest.p
 - [x] Historical incident query (`GET /incidents` — filter by status, material, water_body, date range)
 - [x] Contact verification service (`src/services/contact_verification.py` — staleness, phone/email validation)
 - [x] GIS data quarterly refresh script (`scripts/refresh_gis_data.py` — full pipeline orchestration)
+- [x] Shared material categories JSON (`shared/material-categories.json` — sourced from MCPWO protocol)
+- [x] Spill parser service (`src/services/spill_parser.py` — free-text → structured fields, protocol drain names)
+- [x] Buffer radius lookup (`src/services/buffer_radius.py` — quantity → radius tiered table)
+- [x] Parse endpoint (`POST /incidents/parse` — server-side spill text parsing for frontend auto-fill)
+- [x] Parser test cases (22 scenarios in `tests/parser-test-cases.json` + edge case tests)
+- [x] TypeScript type generation (`scripts/generate_types.py` → `shared/api-types.ts`)
 
 ## Breaking API Changes
 - **`POST /lookup` — `material` field is now optional** (was required). Clients that omitted `material` previously got 422; now they get results filtered to material-agnostic rules only. Update frontend callers if they relied on the 422 for validation.

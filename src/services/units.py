@@ -1,11 +1,16 @@
 """Unit conversion and material categorization for spill intake.
 
 Converts between quantity units and normalizes to gallons (the standard
-unit used by rules engine thresholds). Also maps free-text material
-descriptions to the MaterialType enum for WS2 intake parsing.
+unit used by rules engine thresholds). Material categorization loads
+keywords from shared/material-categories.json (shared with frontend WS2).
 """
 
+import json
+import logging
 import re
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Conversion factors TO gallons
 _TO_GALLONS: dict[str, float] = {
@@ -18,20 +23,23 @@ _TO_GALLONS: dict[str, float] = {
 # Conversion factors FROM gallons
 _FROM_GALLONS: dict[str, float] = {unit: 1.0 / factor for unit, factor in _TO_GALLONS.items()}
 
-# Material keyword patterns → MaterialType enum values
-_MATERIAL_PATTERNS: list[tuple[re.Pattern, str]] = [
-    (
-        re.compile(r"\b(oil|fuel|diesel|gasoline|petrol|kerosene|hydraulic fluid|motor oil|jet fuel)\b", re.I),
-        "oil_fuel",
-    ),
-    (
-        re.compile(
-            r"\b(chemical|hazmat|hazardous|solvent|acid|caustic|pesticide|herbicide|ammonia|chlorine|bleach)\b", re.I
-        ),
-        "chemical_hazmat",
-    ),
-    (re.compile(r"\b(sewage|wastewater|sanitary|septic|effluent|fecal|biosolid)\b", re.I), "sewage"),
-]
+# Load material categories from shared JSON
+_CATEGORIES_PATH = Path(__file__).resolve().parent.parent.parent / "shared" / "material-categories.json"
+_MATERIAL_CATEGORIES: dict[str, list[str]] = {}
+if _CATEGORIES_PATH.exists():
+    _raw = json.loads(_CATEGORIES_PATH.read_text())
+    # Key order is significant — first matching category wins in categorize_material()
+    _MATERIAL_CATEGORIES = {k: v for k, v in _raw.items() if not k.startswith("_") and isinstance(v, list)}
+else:
+    logger.warning("material-categories.json not found at %s — all materials will be 'unknown_other'", _CATEGORIES_PATH)
+
+# Build regex patterns from the JSON keywords
+_MATERIAL_PATTERNS: list[tuple[re.Pattern, str]] = []
+for category, keywords in _MATERIAL_CATEGORIES.items():
+    if keywords:
+        escaped = [re.escape(k) for k in keywords]
+        pattern = re.compile(r"\b(" + "|".join(escaped) + r")\b", re.I)
+        _MATERIAL_PATTERNS.append((pattern, category))
 
 
 def convert_to_gallons(quantity: float, from_unit: str) -> float:
@@ -65,9 +73,15 @@ def convert_units(quantity: float, from_unit: str, to_unit: str) -> float:
 def categorize_material(text: str) -> str:
     """Categorize free-text material description into a MaterialType value.
 
+    Matches against keywords in shared/material-categories.json.
     Returns the first matching category, or 'unknown_other' if no match.
     """
     for pattern, category in _MATERIAL_PATTERNS:
         if pattern.search(text):
             return category
     return "unknown_other"
+
+
+def get_material_categories() -> dict[str, list[str]]:
+    """Return the full material categories mapping (for API exposure)."""
+    return dict(_MATERIAL_CATEGORIES)
