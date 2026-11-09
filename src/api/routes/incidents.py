@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from geoalchemy2 import Geometry
 from geoalchemy2.functions import ST_X, ST_Y
+from pydantic import BaseModel
 from sqlalchemy import cast, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
@@ -16,8 +17,26 @@ from src.schemas.enums import IncidentStatus
 from src.schemas.incident import Incident, IncidentCreate, IncidentSummary
 from src.services.events import dispatch_webhooks
 from src.services.incidents import create_incident
+from src.services.spill_parser import parse_spill_text
 
 router = APIRouter()
+
+
+class ParseRequest(BaseModel):
+    text: str
+
+
+@router.post("/incidents/parse")
+async def parse_incident_text(
+    body: ParseRequest,
+    _user: User = Depends(RequireRole("viewer", "responder", "admin")),
+):
+    """Parse free-text spill description into structured incident fields.
+
+    Returns a dict of extracted fields (water_body, material, quantity, etc.).
+    Frontend can use this for auto-fill during intake.
+    """
+    return parse_spill_text(body.text)
 
 
 @router.post("/incidents", response_model=Incident, status_code=201)

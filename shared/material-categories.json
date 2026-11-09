@@ -1,0 +1,30 @@
+{
+    "_source": "Derived from MCPWO Draft Stormwater Spill Response Protocol (01.08.2018) and Environmental Action Report (12.23.2025). Categories align with protocol response routing: oil/petroleum triggers OPA 90 cost recovery and boom deployment; hazmat triggers County HAZMAT team; sewage triggers Operations and Flow Manager + MDEQ PEAS notification.",
+
+    "oil_fuel": [
+        "oil", "oil sheen", "sheen", "petroleum", "fuel",
+        "diesel", "gasoline", "motor oil", "hydraulic fluid",
+        "heating oil", "jet fuel", "crude oil", "fuel oil",
+        "kerosene", "lubricant", "grease", "oily",
+        "plume", "oil plume"
+    ],
+    "chemical_hazmat": [
+        "chemical", "hazmat", "hazardous", "hazardous material",
+        "solvent", "acid", "caustic", "pesticide", "herbicide",
+        "ammonia", "chlorine", "bleach", "antifreeze", "paint",
+        "fertilizer", "unknown substance", "unknown material",
+        "contamination", "pollutant"
+    ],
+    "sewage": [
+        "sewage", "sanitary", "sanitary sewer", "septic",
+        "wastewater", "effluent", "fecal", "biosolid",
+        "sewer overflow", "SSO", "sanitary sewer overflow",
+        "failing septic", "septic system"
+    ],
+    "unknown_other": [
+        "sediment", "turbidity", "foam", "discoloration",
+        "suspicious", "unnatural", "dead fish", "fish kill",
+        "odor", "smell", "dumping", "illegal dumping",
+        "soil erosion", "construction runoff"
+    ]
+}
