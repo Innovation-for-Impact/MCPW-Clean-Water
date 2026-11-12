@@ -3,10 +3,8 @@
 Sources:
 - MCPWO Spill Response Contact Cards (180522_Spill_Response_Cards.docx)
 - Draft Stormwater Spill Response Protocol (01.08.2018)
+- Red Run Drain Spill Response (20260928_Owners_review_Red Run Spill Response_RFS.pdf, Sept 2026)
 - Agency websites (source_url on each record)
-
-Agency phone numbers need verification — personnel names from 2018 docs
-may have changed, but main agency lines are typically stable.
 
 Usage: DATABASE_URL=... python -m scripts.seed_contacts
 """
@@ -20,9 +18,9 @@ from src.models.contact import Contact
 from src.models.database import async_session_factory, engine
 
 # last_verified reflects when these were last confirmed against source docs
-# Personnel numbers from 2018 docs need re-verification
 NEEDS_VERIFICATION = date(2018, 5, 22)
 VERIFIED_2026 = date(2026, 10, 25)
+RED_RUN_2026 = date(2026, 9, 28)  # Red Run Drain Spill Response document date
 
 SEED_CONTACTS = [
     # ── County-level response ────────────────────────────────────────────
@@ -52,6 +50,40 @@ SEED_CONTACTS = [
         "source_url": "https://macombgov.org/departments/public-works",
         "last_verified": NEEDS_VERIFICATION,
         "notes": "Jeff Bednar — primary responder per Spill Response Protocol. Verify name/number still current.",
+    },
+    {
+        "agency": "Macomb County Public Works — Operations/Flow Manager (SSO Lead)",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "county",
+        "phone": "(586) 469-6320",
+        "after_hours_phone": "(586) 615-2436",
+        "email": "vincent.astorino@macombgov.org",
+        "hours": "Mon-Fri 8am-4:30pm",
+        "reporting_deadline": "Immediate for sanitary sewer overflows",
+        "source_url": "https://macombgov.org/departments/public-works",
+        "last_verified": NEEDS_VERIFICATION,
+        "notes": (
+            "Vincent Astorino — SSO response lead per Spill Response Cards (2018). "
+            "Notified for sewage/sanitary sewer overflows. Verify name/number still current."
+        ),
+    },
+    {
+        "agency": "Macomb County Public Works — Construction Engineer",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "county",
+        "phone": "(586) 307-8272",
+        "after_hours_phone": "(586) 615-4198",
+        "email": "tom.stockel@macombgov.org",
+        "hours": "Mon-Fri 8am-4:30pm",
+        "reporting_deadline": "As needed",
+        "source_url": "https://macombgov.org/departments/public-works",
+        "last_verified": NEEDS_VERIFICATION,
+        "notes": (
+            "Tom Stockel — handles initial response if Environmental Engineer unavailable. "
+            "Per Spill Response Cards (2018). Verify name/number still current."
+        ),
     },
     # ── County-level regulatory ──────────────────────────────────────────
     {
@@ -148,16 +180,32 @@ SEED_CONTACTS = [
         "last_verified": NEEDS_VERIFICATION,
     },
     {
-        "agency": "Clinton Township — Public Services",
+        "agency": "Clinton Township — DPW",
         "role": "response",
         "jurisdiction_id": "muni_clinton_township",
         "jurisdiction_scope": "municipal",
-        "phone": "(586) 286-9465",
+        "phone": "(586) 286-9300",
         "after_hours_phone": "(586) 469-5502",
+        "email": "dps@clintontownship-mi.gov",
         "hours": "Mon-Fri 7:30am-3:30pm",
         "reporting_deadline": "Immediate",
         "source_url": "https://www.clintontownship.com",
-        "last_verified": NEEDS_VERIFICATION,
+        "last_verified": RED_RUN_2026,
+        "notes": "Mary Bednar — per Red Run Drain Spill Response contact list (Sept 2026).",
+    },
+    {
+        "agency": "Clinton Township — Fire Department",
+        "role": "response",
+        "jurisdiction_id": "muni_clinton_township",
+        "jurisdiction_scope": "municipal",
+        "phone": "(586) 263-8437",
+        "after_hours_phone": "911",
+        "email": "fire@clintontownship.com",
+        "hours": "24/7",
+        "reporting_deadline": "Immediate",
+        "source_url": "https://www.clintontownship.com",
+        "last_verified": RED_RUN_2026,
+        "notes": "John Gallagher — per Red Run Drain Spill Response contact list (Sept 2026).",
     },
     {
         "agency": "City of Eastpointe — Public Works",
@@ -229,15 +277,31 @@ SEED_CONTACTS = [
         "last_verified": NEEDS_VERIFICATION,
     },
     {
-        "agency": "City of Sterling Heights — Public Works",
+        "agency": "City of Sterling Heights — DPW",
         "role": "response",
         "jurisdiction_id": "muni_sterling_heights",
         "jurisdiction_scope": "municipal",
         "phone": "(586) 446-2440",
+        "after_hours_phone": "(586) 469-5151",
+        "email": "mmoore@sterling-heights.net",
         "hours": "Mon-Fri 7am-3:30pm",
         "reporting_deadline": "Immediate",
         "source_url": "https://www.sterling-heights.net",
-        "last_verified": NEEDS_VERIFICATION,
+        "last_verified": RED_RUN_2026,
+        "notes": "Michael Moore — per Red Run Drain Spill Response contact list (Sept 2026).",
+    },
+    {
+        "agency": "City of Sterling Heights — Fire Department",
+        "role": "response",
+        "jurisdiction_id": "muni_sterling_heights",
+        "jurisdiction_scope": "municipal",
+        "phone": "(586) 446-2950",
+        "after_hours_phone": "911",
+        "hours": "24/7",
+        "reporting_deadline": "Immediate",
+        "source_url": "https://www.sterling-heights.net",
+        "last_verified": RED_RUN_2026,
+        "notes": "Kevin Edmond — per Red Run Drain Spill Response contact list (Sept 2026).",
     },
     {
         "agency": "City of St Clair Shores — DPW",
@@ -251,15 +315,44 @@ SEED_CONTACTS = [
         "last_verified": NEEDS_VERIFICATION,
     },
     {
-        "agency": "City of Warren — Public Works",
+        "agency": "City of Warren — DPS",
         "role": "response",
         "jurisdiction_id": "muni_warren",
         "jurisdiction_scope": "municipal",
-        "phone": "(586) 574-4955",
+        "phone": "(586) 574-4604",
+        "email": "dmuzzarelli@cityofwarren.org",
         "hours": "Mon-Fri 7am-3:30pm",
         "reporting_deadline": "Immediate",
         "source_url": "https://www.cityofwarren.org",
-        "last_verified": NEEDS_VERIFICATION,
+        "last_verified": RED_RUN_2026,
+        "notes": "David Muzzarelli — per Red Run Drain Spill Response contact list (Sept 2026).",
+    },
+    {
+        "agency": "City of Warren — Fire Department",
+        "role": "response",
+        "jurisdiction_id": "muni_warren",
+        "jurisdiction_scope": "municipal",
+        "phone": "(586) 574-9111",
+        "after_hours_phone": "911",
+        "email": "warrenfire@warrenfiredept.org",
+        "hours": "24/7",
+        "reporting_deadline": "Immediate",
+        "source_url": "https://www.cityofwarren.org",
+        "last_verified": RED_RUN_2026,
+        "notes": "Skip McAdams — per Red Run Drain Spill Response contact list (Sept 2026).",
+    },
+    {
+        "agency": "City of Warren — Spill Response Team",
+        "role": "response",
+        "jurisdiction_id": "muni_warren",
+        "jurisdiction_scope": "municipal",
+        "phone": "(586) 574-4604",
+        "email": "dmuzzarelli@cityofwarren.org",
+        "hours": "Mon-Fri 7am-3:30pm",
+        "reporting_deadline": "Immediate",
+        "source_url": "https://www.cityofwarren.org",
+        "last_verified": RED_RUN_2026,
+        "notes": "Dave Lynette — dedicated spill response. Per Red Run Drain contact list (Sept 2026).",
     },
     {
         "agency": "Shelby Township — DPW",
@@ -282,6 +375,110 @@ SEED_CONTACTS = [
         "reporting_deadline": "Immediate",
         "source_url": "https://www.cityofnewbaltimore.org",
         "last_verified": NEEDS_VERIFICATION,
+    },
+    # ── Intercounty — Oakland County (Red Run crosses county line) ──────
+    {
+        "agency": "Oakland County Water Resources Commissioner (OCWRC)",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "intercounty",
+        "phone": "(248) 858-0958",
+        "after_hours_phone": "(248) 858-0931",
+        "email": "frederiksene@OaklandCountyMI.gov",
+        "hours": "Mon-Fri 8am-5pm",
+        "reporting_deadline": "Immediate for Red Run / GWK Drain incidents",
+        "source_url": "https://www.oakgov.com/water",
+        "last_verified": RED_RUN_2026,
+        "notes": (
+            "Erik Frederikson — OCWRC GWK Drain contact. Red Run Drain is intercounty "
+            "(Oakland/Macomb); OCWRC manages upstream GWK Drain. Per Red Run Spill Response (Sept 2026)."
+        ),
+    },
+    {
+        "agency": "Oakland County Water Resources Commissioner — Emergency Line",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "intercounty",
+        "phone": "(248) 858-0931",
+        "hours": "24/7",
+        "source_url": "https://www.oakgov.com/water",
+        "last_verified": RED_RUN_2026,
+        "notes": "OCWRC after-hours emergency. Per Red Run Spill Response (Sept 2026).",
+    },
+    # ── Disposal / utility ──────────────────────────────────────────────
+    {
+        "agency": "South Macomb Disposal Authority (SMDA)",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "county",
+        "phone": "(586) 777-1284",
+        "hours": "24/7",
+        "reporting_deadline": "Immediate",
+        "source_url": "https://www.smda.us",
+        "last_verified": RED_RUN_2026,
+        "notes": "Emergency line. Gate access contact for Sterling Relief / Metro Parkway sites.",
+    },
+    # ── Site access — Huron Academy (Red Run Crossing 16 area) ──────────
+    {
+        "agency": "Huron Academy — Principal",
+        "role": "response",
+        "jurisdiction_id": "muni_sterling_heights",
+        "jurisdiction_scope": "municipal",
+        "phone": "(586) 690-8180",
+        "after_hours_phone": "(586) 446-9170",
+        "email": "sobczakj@huronacademy.org",
+        "hours": "School hours",
+        "source_url": "https://www.huronacademy.org",
+        "last_verified": RED_RUN_2026,
+        "notes": (
+            "Joshua Sobczak — site access for Red Run Crossing 16 (Metro Parkway). "
+            "Per Red Run Spill Response (Sept 2026)."
+        ),
+    },
+    # ── Cleanup contractors (from Red Run Spill Response p.2) ───────────
+    {
+        "agency": "Marine Pollution Control",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "contractor",
+        "phone": "(313) 849-2333",
+        "hours": "24/7",
+        "source_url": "https://www.marinepollutioncontrol.com",
+        "last_verified": RED_RUN_2026,
+        "notes": "Spill cleanup contractor. Per Red Run Spill Response (Sept 2026).",
+    },
+    {
+        "agency": "Deotsch Environmental",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "contractor",
+        "phone": "(586) 755-2090",
+        "hours": "24/7",
+        "source_url": "https://www.deotsch.com",
+        "last_verified": RED_RUN_2026,
+        "notes": "Spill cleanup contractor. Per Red Run Spill Response (Sept 2026).",
+    },
+    {
+        "agency": "Mersino Dewatering",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "contractor",
+        "phone": "(866) 637-7466",
+        "hours": "24/7",
+        "source_url": "https://www.mersino.com",
+        "last_verified": RED_RUN_2026,
+        "notes": "Dewatering contractor. Per Red Run Spill Response (Sept 2026).",
+    },
+    {
+        "agency": "Clean Harbors",
+        "role": "response",
+        "jurisdiction_id": "county_macomb",
+        "jurisdiction_scope": "contractor",
+        "phone": "(800) 645-8265",
+        "hours": "24/7",
+        "source_url": "https://www.cleanharbors.com",
+        "last_verified": RED_RUN_2026,
+        "notes": "Environmental cleanup contractor. Per Red Run Spill Response (Sept 2026).",
     },
 ]
 

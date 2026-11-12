@@ -109,10 +109,10 @@
     },
     {
         "id": "TC09",
-        "description": "Septic failure — sewage routing",
-        "input": "failing septic system leaking into Red Run ditch near Roseville",
+        "description": "Septic failure into Red Run drain — sewage routing",
+        "input": "failing septic system leaking into Red Run drain near Roseville",
         "expected": {
-            "water_body": "tributary",
+            "water_body": "county_drain",
             "material": "sewage",
             "material_detail": "septic",
             "address_hint": "Roseville"

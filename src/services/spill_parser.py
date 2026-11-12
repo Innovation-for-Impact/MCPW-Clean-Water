@@ -19,11 +19,22 @@ from src.services.units import categorize_material, convert_to_gallons
 _WATER_BODY_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\blake\s*st\.?\s*clair\b", re.I), "lake_st_clair"),
     (re.compile(r"\bclinton\s+river\b", re.I), "clinton_river"),
-    # Named county drains (from MCPWO protocol / Environmental Action Report)
-    (re.compile(r"\b(vermander|big\s+beaver|chapaton)\b", re.I), "county_drain"),
-    (re.compile(r"\b(county\s+drain|drain\s+district)\b", re.I), "county_drain"),
-    # Named tributaries/creeks in Macomb County
-    (re.compile(r"\b(red\s+run|plum\s+brook|bear\s+creek|north\s+branch)\b", re.I), "tributary"),
+    # Named county drains (from MCPWO protocol / Environmental Action Report / Red Run Spill Response)
+    (re.compile(r"\b(vermander|chapaton)\b", re.I), "county_drain"),
+    # Red Run Intercounty Drain and its named connections (from Red Run Spill Response Sept 2026)
+    (
+        re.compile(
+            r"\b(red\s+run|meckler|hartlein|smith\s+rivard|schoenherr\s+relief"
+            r"|sterling\s+relief|bousson|puls)\s*(drain)?\b",
+            re.I,
+        ),
+        "county_drain",
+    ),
+    (re.compile(r"\b(county\s+drain|drain\s+district|intercounty\s+drain)\b", re.I), "county_drain"),
+    # Big Beaver Creek connects to Red Run as a county drain (Red Run crossing 8)
+    (re.compile(r"\bbig\s+beaver\b", re.I), "county_drain"),
+    # Named tributaries/creeks in Macomb County (from Red Run crossings + NHD)
+    (re.compile(r"\b(bear\s+creek|plum\s+brook|north\s+branch)\b", re.I), "tributary"),
     (re.compile(r"\b(tributary|creek|brook|stream|ditch)\b", re.I), "tributary"),
     # Storm sewer / MS4 (per MCPWO protocol: County Municipal Separate Storm Sewer Systems)
     (re.compile(r"\b(storm\s+(drain|sewer)|storm\s*water|stormwater|MS4|catch\s+basin)\b", re.I), "storm_sewer"),
@@ -87,6 +98,9 @@ _MACOMB_PLACES = [
     "Lenox Township",
     "Bruce Township",
     "Washington Township",
+    # Adjacent municipalities (Red Run crosses into Oakland County / Troy)
+    "Troy",
+    "Madison Heights",
 ]
 
 _PLACE_RE = re.compile(
